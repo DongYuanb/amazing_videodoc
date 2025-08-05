@@ -10,31 +10,35 @@ import requests
 import numpy as np
 from PIL import Image
 import shutil
+from image_preprocessor import ImagePreprocessor, NoOpPreprocessor
 
 
 class VideoFrameDeduplicator:
     """视频帧去重处理器：抽取视频帧，使用Jina API获取embeddings，去除相似帧"""
     
-    def __init__(self, 
+    def __init__(self,
                  jina_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
                  similarity_threshold: float = 0.9,
-                 api_timeout: int = 30):
+                 api_timeout: int = 30,
+                 image_preprocessor: Optional[ImagePreprocessor] = None):
         """
         初始化去重处理器
-        
+
         Args:
             jina_api_key: Jina API密钥
             ffmpeg_path: ffmpeg可执行文件路径
             similarity_threshold: 相似度阈值，超过此值认为是重复图片
             api_timeout: API请求超时时间（秒）
+            image_preprocessor: 图片预处理器，用于裁剪等操作
         """
         self.jina_api_key = jina_api_key
         self.ffmpeg_path = ffmpeg_path
         self.similarity_threshold = similarity_threshold
         self.api_timeout = api_timeout
         self.jina_api_url = "https://api.jina.ai/v1/embeddings"
-        
+        self.image_preprocessor = image_preprocessor or NoOpPreprocessor()
+
         self._check_ffmpeg()
     
     def _check_ffmpeg(self):
@@ -318,23 +322,33 @@ class VideoFrameDeduplicator:
             print("\n1. Extracting frames...")
             frame_paths = self.extract_frames(video_path, start_time, end_time, fps, temp_dir)
 
-            # 2. 获取embeddings
-            print("\n2. Getting embeddings...")
-            embeddings = self.get_batch_embeddings(frame_paths)
+            # 2. 预处理图片（裁剪等）
+            print("\n2. Preprocessing images...")
+            if not isinstance(self.image_preprocessor, NoOpPreprocessor):
+                preprocessed_dir = os.path.join(temp_dir, "preprocessed")
+                preprocessed_paths = self.image_preprocessor.process_images(frame_paths, preprocessed_dir)
+                print(f"Preprocessed {len(preprocessed_paths)} images")
+            else:
+                preprocessed_paths = frame_paths
+                print("No preprocessing applied")
 
-            if len(embeddings) != len(frame_paths):
-                print(f"Warning: Got {len(embeddings)} embeddings for {len(frame_paths)} frames")
+            # 3. 获取embeddings
+            print("\n3. Getting embeddings...")
+            embeddings = self.get_batch_embeddings(preprocessed_paths)
+
+            if len(embeddings) != len(preprocessed_paths):
+                print(f"Warning: Got {len(embeddings)} embeddings for {len(preprocessed_paths)} frames")
                 # 只处理成功获取embedding的图片
-                min_len = min(len(embeddings), len(frame_paths))
-                frame_paths = frame_paths[:min_len]
+                min_len = min(len(embeddings), len(preprocessed_paths))
+                preprocessed_paths = preprocessed_paths[:min_len]
                 embeddings = embeddings[:min_len]
 
-            # 3. 去除重复
-            print("\n3. Removing duplicates...")
-            unique_paths = self.remove_duplicates(frame_paths, embeddings)
+            # 4. 去除重复
+            print("\n4. Removing duplicates...")
+            unique_paths = self.remove_duplicates(preprocessed_paths, embeddings)
 
-            # 4. 保存结果
-            print("\n4. Saving unique frames...")
+            # 5. 保存结果
+            print("\n5. Saving unique frames...")
             saved_paths = self.save_unique_frames(unique_paths, output_dir)
 
             # 统计信息
@@ -343,15 +357,19 @@ class VideoFrameDeduplicator:
                 "time_range": (start_time, end_time),
                 "fps": fps,
                 "total_frames": len(frame_paths),
+                "preprocessed_frames": len(preprocessed_paths),
                 "unique_frames": len(saved_paths),
-                "duplicates_removed": len(frame_paths) - len(saved_paths),
+                "duplicates_removed": len(preprocessed_paths) - len(saved_paths),
                 "similarity_threshold": self.similarity_threshold,
+                "preprocessing_applied": not isinstance(self.image_preprocessor, NoOpPreprocessor),
                 "output_dir": output_dir,
                 "saved_paths": saved_paths
             }
 
             print(f"\n✅ Process completed successfully!")
             print(f"Total frames extracted: {result['total_frames']}")
+            if result['preprocessing_applied']:
+                print(f"Frames after preprocessing: {result['preprocessed_frames']}")
             print(f"Unique frames saved: {result['unique_frames']}")
             print(f"Duplicates removed: {result['duplicates_removed']}")
             print(f"Output directory: {output_dir}")
