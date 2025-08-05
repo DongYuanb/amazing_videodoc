@@ -7,3 +7,5 @@
 .env
 /output
 .vscode
+.DS_Store
+*.pdf

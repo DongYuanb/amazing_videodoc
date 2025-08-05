@@ -1,0 +1,23 @@
+{
+  "time_window": 30.0,
+  "layout_type": "balanced",
+  "pdf_title": "AI讲座笔记 - 自动生成",
+  "pdf_author": "Video Frame Deduplicator",
+  "show_timestamps": true,
+  "show_page_numbers": true,
+  "image_quality": 85,
+  "output_dir": "output/notebooks",
+  "filename_template": "notebook_{timestamp}.pdf",
+  "description": "图文混排笔记生成配置示例",
+  "layout_options": {
+    "image_dominant": "图片主导布局，适合PPT截图场景",
+    "text_dominant": "文字主导布局，适合讲座笔记场景",
+    "balanced": "平衡布局，图文并重",
+    "timeline": "时间线布局，按时间顺序展示"
+  },
+  "time_window_guide": {
+    "10.0": "短时间窗口，内容分组更细致",
+    "30.0": "中等时间窗口，适合大多数场景",
+    "60.0": "长时间窗口，内容分组更宽松"
+  }
+}
