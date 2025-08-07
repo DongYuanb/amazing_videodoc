@@ -36,7 +36,7 @@ def example_template_cropping():
     
     # 创建去重处理器
     deduplicator = VideoFrameDeduplicator(
-        jina_api_key="jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt",
+        jina_api_key=os.getenv("JINA_API_KEY"),
         similarity_threshold=0.85,
         image_preprocessor=preprocessor
     )
@@ -77,7 +77,7 @@ def example_manual_cropping():
     
     # 创建去重处理器
     deduplicator = VideoFrameDeduplicator(
-        jina_api_key="jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt",
+        jina_api_key=os.getenv("JINA_API_KEY"),
         similarity_threshold=0.85,
         image_preprocessor=preprocessor
     )
@@ -101,7 +101,7 @@ def example_config_cropping():
         
         # 创建去重处理器
         deduplicator = VideoFrameDeduplicator(
-            jina_api_key="jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt",
+            jina_api_key=os.getenv("JINA_API_KEY"),
             similarity_threshold=0.85,
             image_preprocessor=preprocessor
         )
@@ -127,7 +127,7 @@ def example_interactive_cropping():
         
         # 先抽取一帧作为样本
         temp_deduplicator = VideoFrameDeduplicator(
-            jina_api_key="jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt"
+            jina_api_key=os.getenv("JINA_API_KEY")
         )
         
         # 抽取一帧作为样本
@@ -141,7 +141,7 @@ def example_interactive_cropping():
             
             # 创建完整的去重处理器
             deduplicator = VideoFrameDeduplicator(
-                jina_api_key="jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt",
+                jina_api_key=os.getenv("JINA_API_KEY"),
                 similarity_threshold=0.85,
                 image_preprocessor=preprocessor
             )

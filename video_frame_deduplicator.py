@@ -394,7 +394,7 @@ def create_deduplicator(jina_api_key: str, **kwargs) -> VideoFrameDeduplicator:
 # 使用示例
 if __name__ == "__main__":
     # 示例用法
-    api_key = "jina_1eab753c55994fe0973e7996d65e9432j_ghOOZ4ayKDNh0J4WgKZGC1Ihqt"
+    api_key = os.getenv("JINA_API_KEY")
 
     # 创建处理器
     deduplicator = VideoFrameDeduplicator(
