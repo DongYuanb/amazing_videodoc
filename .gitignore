@@ -1,6 +1,6 @@
 *.pyc
 *~
-*/__pycache__/
+**/__pycache__/
 *.mp4
 *.wav
 *.aac
@@ -9,3 +9,4 @@
 .vscode
 .DS_Store
 *.pdf
+/ouput

@@ -3,9 +3,11 @@ import os
 import sys
 from typing import List, Dict, Any
 from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
 
-class DoubaoMinuteSummarizer:
-    """基于OpenAI风格API的会议内容整理工具（按原始时间段）"""
+class Summarizer:
+    """会议内容整理工具（按原始时间段）"""
     
     def __init__(self, model_id: str):
         """初始化总结器，使用OpenAI客户端"""
@@ -18,9 +20,8 @@ class DoubaoMinuteSummarizer:
         if not api_key:
             raise ValueError("请设置环境变量 ARK_API_KEY 存储API密钥")
             
-        # 初始化OpenAI客户端，指向豆包API端点
         return OpenAI(
-            base_url="https://ark.cn-beijing.volces.com/api/v3",
+            base_url="https://openrouter.ai/api/v1",
             api_key=api_key
         )
 
@@ -142,13 +143,12 @@ class DoubaoMinuteSummarizer:
             sys.exit(1)
 
 if __name__ == "__main__":
-    # 配置参数（与OpenAI风格API匹配）
     INPUT_FILE = "2.json"    # 输入文件
     OUTPUT_FILE = "3.json"  # 输出文件
-    MODEL_ID = "kimi-k2-250711"  # 模型ID（与OpenAI调用示例一致）
+    MODEL_ID = "openrouter/horizon-beta"  # 模型ID（与OpenAI调用示例一致）
     
     try:
-        summarizer = DoubaoMinuteSummarizer(MODEL_ID)
+        summarizer = Summarizer(MODEL_ID)
         summarizer.process_meeting(INPUT_FILE, OUTPUT_FILE)
     except Exception as e:
         print(f"程序错误: {str(e)}", file=sys.stderr)
