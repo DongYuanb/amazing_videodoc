@@ -27,14 +27,19 @@ class VideoProcessor:
     def _extract_streams(self,input_path:str,output_dir:str)->Tuple[str,str]:
         """提取音频和视频流"""
         base=Path(input_path).stem
-        audio_out=os.path.join(output_dir,f"{base}_audio.aac")
+        audio_out=os.path.join(output_dir,f"{base}_audio.wav")
         video_out=os.path.join(output_dir,f"{base}_video.mp4")
 
         # 提取音频流
         subprocess.run([
-            self.ffmpeg,"-i",input_path,"-vn","-acodec","aac",
-            "-y",audio_out
-        ],check=True,capture_output=True)
+            self.ffmpeg, "-i", input_path,
+            "-vn",                          # 忽略视频流
+            "-acodec", "pcm_s16le",         # 使用 16-bit PCM 编码（标准 WAV 格式）
+            "-ar", "44100",                 # 可选：设置采样率（如 44.1kHz）
+            "-ac", "2",                     # 可选：设置声道数（立体声）
+            "-y",                           # 覆盖输出文件
+            audio_out                       # 输出 .wav 文件
+        ], check=True, capture_output=True)
 
         # 提取视频流(无音频)
         subprocess.run([
@@ -73,6 +78,28 @@ class VideoProcessor:
             return self.process_url(src,output_dir)
         else:
             return self.process_file(src,output_dir)
+
+def extract_audio_for_asr(video_path:str,output_audio:Optional[str]=None,ffmpeg_path:str="ffmpeg")->str:
+    """便捷函数：从视频中提取适合ASR的音频格式"""
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"视频文件不存在: {video_path}")
+
+    if output_audio is None:
+        output_audio=f"{Path(video_path).stem}_audio.wav"
+
+    # ASR优化参数：16kHz单声道PCM格式
+    cmd=[
+        ffmpeg_path,"-i",video_path,
+        "-vn","-acodec","pcm_s16le","-ar","16000","-ac","1",
+        "-y",output_audio
+    ]
+
+    try:
+        subprocess.run(cmd,capture_output=True,check=True,text=True)
+        print(f"音频提取完成: {output_audio}")
+        return output_audio
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"音频提取失败: {e.stderr}")
 
 def split_video(source:Union[str,Path],output_dir:Optional[str]=None,ffmpeg_path:str="ffmpeg")->Tuple[str,str]:
     """便捷函数：分离音视频流"""

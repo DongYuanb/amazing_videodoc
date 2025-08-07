@@ -7,16 +7,8 @@ import os
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
-import sys
-from pathlib import Path
-
-# 添加 asr_tencent 目录到 Python 路径，以支持原有的导入方式
-asr_tencent_dir = Path(__file__).parent
-if str(asr_tencent_dir) not in sys.path:
-    sys.path.insert(0, str(asr_tencent_dir))
-
-from common import credential
-from asr import flash_recognizer
+from . import credential
+from . import flash_recognizer
 
 
 class ASRService:

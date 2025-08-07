@@ -118,7 +118,7 @@ class Summarizer:
             "summary": summary
         }
 
-    def process_meeting(self, input_path: str, output_path: str) -> None:
+    def process_file(self, input_path: str, output_path: str) -> None:
         """加载→逐条整理→保存"""
         try:
             timed_texts = self.load_timed_texts(input_path)
@@ -134,7 +134,7 @@ class Summarizer:
                 summaries.append(summary_item)
 
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(summaries, f, ensure_ascii=False, indent=4)
+                json.dump({"summaries": summaries}, f, ensure_ascii=False, indent=4)
 
             print(f"处理完成，总结已保存至 {output_path}")
 
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     
     try:
         summarizer = Summarizer(MODEL_ID)
-        summarizer.process_meeting(INPUT_FILE, OUTPUT_FILE)
+        summarizer.process_file(INPUT_FILE, OUTPUT_FILE)
     except Exception as e:
         print(f"程序错误: {str(e)}", file=sys.stderr)
         sys.exit(1)

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-视频处理主流程：音视频分流 -> ASR转录 -> 文本合并 -> 摘要生成
+视频处理工作流程编排器：音频提取 -> ASR转录 -> 文本合并 -> 摘要生成
 """
-import os,sys,json,subprocess
+import os,sys,json
 from pathlib import Path
 from typing import Optional,Dict
 from asr_tencent.text_merge import TextMerger
 from asr_tencent.summary_generator import Summarizer
 from asr_tencent.asr_service import ASRService
+from ffmpeg_process import extract_audio_for_asr
 
-class VideoProcessor:
-    """视频处理器：完整的音频转录和摘要生成流程"""
+class VideoProcessingWorkflow:
+    """视频处理工作流程编排器：专注于流程编排，功能模块解耦"""
 
     def __init__(self,
                  model_id:str="openrouter/horizon-beta",
@@ -19,20 +20,18 @@ class VideoProcessor:
                  asr_secret_id:str=None,
                  asr_secret_key:str=None):
         self.model_id=model_id
-        self.ffmpeg_path=ffmpeg_path
-        self.text_merger=TextMerger(model_id)
-        self.summary_generator=Summarizer(model_id)
 
-        # 初始化 ASR 服务
+        # 初始化各个功能模块
+        self.ffmpeg_path = ffmpeg_path
+        self.text_merger = TextMerger(model_id)
+        self.summary_generator = Summarizer(model_id)
         self.asr_service = self._init_asr_service(asr_appid, asr_secret_id, asr_secret_key)
-
-        self._check_ffmpeg()
 
     def _init_asr_service(self, appid, secret_id, secret_key):
         """初始化 ASR 服务"""
         # 如果没有提供参数，尝试从环境变量或默认值获取
         if not appid:
-            appid = os.getenv("TENCENT_APPID", "1359872096")  # 使用原来的默认值
+            appid = os.getenv("TENCENT_APPID", "1359872096")
         if not secret_id:
             secret_id = os.getenv("TENCENT_SECRET_ID", "AKIDd9UdYGlGYdU8YkiTinfJvKl7IclgQxGM")
         if not secret_key:
@@ -42,34 +41,10 @@ class VideoProcessor:
             return ASRService(appid, secret_id, secret_key)
         except ValueError as e:
             raise RuntimeError(f"ASR服务初始化失败: {e}")
-    
-    def _check_ffmpeg(self):
-        """检查ffmpeg可用性"""
-        try:
-            subprocess.run([self.ffmpeg_path,"-version"],capture_output=True,check=True)
-        except:
-            raise RuntimeError(f"ffmpeg不可用: {self.ffmpeg_path}")
-    
+
     def extract_audio(self,video_path:str,output_audio:Optional[str]=None)->str:
-        """从视频中提取音频"""
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"视频文件不存在: {video_path}")
-        
-        if output_audio is None:
-            output_audio=f"{Path(video_path).stem}_audio.wav"
-        
-        cmd=[
-            self.ffmpeg_path,"-i",video_path,
-            "-vn","-acodec","pcm_s16le","-ar","16000","-ac","1",
-            "-y",output_audio
-        ]
-        
-        try:
-            subprocess.run(cmd,capture_output=True,check=True,text=True)
-            print(f"音频提取完成: {output_audio}")
-            return output_audio
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"音频提取失败: {e.stderr}")
+        """从视频中提取音频（委托给ffmpeg_process模块）"""
+        return extract_audio_for_asr(video_path, output_audio, self.ffmpeg_path)
     
     def run_asr(self,audio_path:str,output_json:Optional[str]=None)->str:
         """运行ASR转录（使用ASR服务模块）"""
@@ -100,8 +75,7 @@ class VideoProcessor:
         if self.summary_generator.process_file(merged_json,output_summary):
             print(f"摘要生成完成: {output_summary}")
             return output_summary
-        else:
-            raise RuntimeError("摘要生成失败")
+
     
     def process_video(self,video_path:str,output_dir:Optional[str]=None,keep_temp:bool=False)->Dict[str,str]:
         """完整的视频处理流程"""
@@ -172,8 +146,8 @@ def main():
         sys.exit(1)
     
     try:
-        processor=VideoProcessor()
-        result=processor.process_video(video_path,output_dir,keep_temp=False)
+        workflow=VideoProcessingWorkflow()
+        result=workflow.process_video(video_path,output_dir,keep_temp=False)
         
         # 显示摘要预览
         try:

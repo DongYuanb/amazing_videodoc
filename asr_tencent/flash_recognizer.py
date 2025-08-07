@@ -7,7 +7,8 @@ import time
 import random
 import os
 import json
-from common import credential
+from .credential import Credential
+
 
 #录音识别极速版使用
 class FlashRecognitionRequest:
