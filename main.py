@@ -9,7 +9,8 @@ from asr_tencent.text_merge import TextMerger
 from asr_tencent.summary_generator import Summarizer
 from asr_tencent.asr_service import ASRService
 from ffmpeg_process import extract_audio_for_asr
-
+from dotenv import load_dotenv
+load_dotenv()
 class VideoProcessingWorkflow:
     """视频处理工作流程编排器：专注于流程编排，功能模块解耦"""
 
@@ -31,11 +32,11 @@ class VideoProcessingWorkflow:
         """初始化 ASR 服务"""
         # 如果没有提供参数，尝试从环境变量或默认值获取
         if not appid:
-            appid = os.getenv("TENCENT_APPID", "1359872096")
+            appid = os.getenv("TENCENT_APPID")
         if not secret_id:
-            secret_id = os.getenv("TENCENT_SECRET_ID", "AKIDd9UdYGlGYdU8YkiTinfJvKl7IclgQxGM")
+            secret_id = os.getenv("TENCENT_SECRET_ID")
         if not secret_key:
-            secret_key = os.getenv("TENCENT_SECRET_KEY", "ub4JLGAvojYO3VkofI7nJcT7ZoqhLrCJ")
+            secret_key = os.getenv("TENCENT_SECRET_KEY")
 
         try:
             return ASRService(appid, secret_id, secret_key)
