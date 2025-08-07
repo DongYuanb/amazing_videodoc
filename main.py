@@ -1,17 +1,118 @@
 #!/usr/bin/env python3
 """
 视频处理工作流程编排器：音频提取 -> ASR转录 -> 文本合并 -> 摘要生成
+支持命令行和 FastAPI 两种使用方式
 """
-import os,sys,json
+import os,sys,json,uuid,shutil
 from pathlib import Path
-from typing import Optional,Dict
+from typing import Optional,Dict,List
+from datetime import datetime
 from asr_tencent.text_merge import TextMerger
 from asr_tencent.summary_generator import Summarizer
 from asr_tencent.asr_service import ASRService
 from ffmpeg_process import extract_audio_for_asr
 from multimodal_note_generator import MultimodalNoteGenerator
 from dotenv import load_dotenv
+
+# FastAPI 相关导入
+try:
+    from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+    from fastapi.responses import JSONResponse, FileResponse
+    from fastapi.staticfiles import StaticFiles
+    from pydantic import BaseModel
+    FASTAPI_AVAILABLE = True
+except ImportError:
+    FASTAPI_AVAILABLE = False
+    print("⚠️  FastAPI 未安装，仅支持命令行模式")
+
 load_dotenv()
+
+# API 数据模型 (仅在 FastAPI 可用时定义)
+if FASTAPI_AVAILABLE:
+    class TaskStatus(BaseModel):
+        task_id: str
+        status: str  # pending, processing, completed, failed
+        current_step: Optional[str] = None
+        progress: float = 0.0
+        created_at: str
+        updated_at: str
+        error_message: Optional[str] = None
+
+    class ProcessRequest(BaseModel):
+        start_from: str = "audio_extract"
+        enable_multimodal: bool = True
+        keep_temp: bool = False
+
+# 简单的任务管理器
+class TaskManager:
+    """基于文件系统的简单任务管理"""
+
+    def __init__(self, storage_dir: str = "storage"):
+        self.storage_dir = Path(storage_dir)
+        self.storage_dir.mkdir(exist_ok=True)
+        self.tasks_dir = self.storage_dir / "tasks"
+        self.tasks_dir.mkdir(exist_ok=True)
+
+    def create_task(self, original_filename: str) -> str:
+        """创建新任务"""
+        task_id = str(uuid.uuid4())
+        task_dir = self.tasks_dir / task_id
+        task_dir.mkdir(exist_ok=True)
+
+        # 创建任务元数据
+        metadata = {
+            "task_id": task_id,
+            "original_filename": original_filename,
+            "status": "pending",
+            "current_step": None,
+            "progress": 0.0,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "error_message": None
+        }
+
+        self.save_metadata(task_id, metadata)
+        return task_id
+
+    def get_task_dir(self, task_id: str) -> Path:
+        """获取任务目录"""
+        return self.tasks_dir / task_id
+
+    def save_metadata(self, task_id: str, metadata: dict):
+        """保存任务元数据"""
+        task_dir = self.get_task_dir(task_id)
+        with open(task_dir / "metadata.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+    def load_metadata(self, task_id: str) -> dict:
+        """加载任务元数据"""
+        task_dir = self.get_task_dir(task_id)
+        metadata_file = task_dir / "metadata.json"
+        if not metadata_file.exists():
+            if FASTAPI_AVAILABLE:
+                raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
+            else:
+                raise FileNotFoundError(f"任务不存在: {task_id}")
+
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def update_status(self, task_id: str, status: str, current_step: str = None,
+                     progress: float = None, error_message: str = None):
+        """更新任务状态"""
+        metadata = self.load_metadata(task_id)
+        metadata["status"] = status
+        metadata["updated_at"] = datetime.now().isoformat()
+
+        if current_step is not None:
+            metadata["current_step"] = current_step
+        if progress is not None:
+            metadata["progress"] = progress
+        if error_message is not None:
+            metadata["error_message"] = error_message
+
+        self.save_metadata(task_id, metadata)
+
 class VideoProcessingWorkflow:
     """视频处理工作流程编排器：专注于流程编排，功能模块解耦"""
 
@@ -361,6 +462,143 @@ def main():
         print(f"摘要预览失败: {e}")
 
     print(f"\n🎉 全部完成！结果保存在: {result['output_dir']}")
+
+# ==================== FastAPI 应用 ====================
+if FASTAPI_AVAILABLE:
+    # 创建 FastAPI 应用
+    app = FastAPI(
+        title="视频处理 API",
+        description="视频转录、摘要和图文笔记生成服务",
+        version="1.0.0"
+    )
+
+    # 全局任务管理器
+    task_manager = TaskManager()
+
+    @app.get("/")
+    async def root():
+        return {"message": "视频处理 API 服务", "docs": "/docs"}
+
+    @app.get("/api/health")
+    async def health_check():
+        return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+    @app.post("/api/upload")
+    async def upload_video(file: UploadFile = File(...)):
+        """上传视频文件"""
+        if not file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')):
+            raise HTTPException(status_code=400, detail="不支持的视频格式")
+
+        # 创建任务
+        task_id = task_manager.create_task(file.filename)
+        task_dir = task_manager.get_task_dir(task_id)
+
+        # 保存上传的文件
+        video_path = task_dir / "original_video.mp4"
+        with open(video_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        return {
+            "task_id": task_id,
+            "filename": file.filename,
+            "message": "文件上传成功"
+        }
+
+    @app.post("/api/process/{task_id}")
+    async def start_processing(task_id: str, request: ProcessRequest, background_tasks: BackgroundTasks):
+        """开始处理视频"""
+        try:
+            metadata = task_manager.load_metadata(task_id)
+        except:
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+        if metadata["status"] != "pending":
+            raise HTTPException(status_code=400, detail=f"任务状态错误: {metadata['status']}")
+
+        # 启动后台处理
+        background_tasks.add_task(
+            process_video_background,
+            task_id,
+            request.start_from,
+            request.enable_multimodal,
+            request.keep_temp
+        )
+
+        # 更新状态
+        task_manager.update_status(task_id, "processing", "starting", 0.1)
+
+        return {"message": "处理已开始", "task_id": task_id}
+
+    @app.get("/api/status/{task_id}")
+    async def get_task_status(task_id: str):
+        """获取任务状态"""
+        try:
+            metadata = task_manager.load_metadata(task_id)
+            return metadata
+        except:
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+    @app.get("/api/results/{task_id}")
+    async def get_results(task_id: str):
+        """获取处理结果"""
+        try:
+            metadata = task_manager.load_metadata(task_id)
+        except:
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+        if metadata["status"] != "completed":
+            raise HTTPException(status_code=400, detail="任务尚未完成")
+
+        task_dir = task_manager.get_task_dir(task_id)
+        results = {}
+
+        # 收集所有结果文件
+        result_files = {
+            "asr_result": "asr_result.json",
+            "merged_text": "merged_text.json",
+            "summary": "summary.json",
+            "multimodal_notes": "multimodal_notes.json"
+        }
+
+        for key, filename in result_files.items():
+            file_path = task_dir / filename
+            if file_path.exists():
+                with open(file_path, "r", encoding="utf-8") as f:
+                    results[key] = json.load(f)
+
+        return {
+            "task_id": task_id,
+            "status": metadata["status"],
+            "results": results
+        }
+
+    async def process_video_background(task_id: str, start_from: str, enable_multimodal: bool, keep_temp: bool):
+        """后台处理视频的函数"""
+        try:
+            task_dir = task_manager.get_task_dir(task_id)
+            video_path = task_dir / "original_video.mp4"
+
+            # 创建工作流实例
+            workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal)
+
+            # 更新进度回调
+            def update_progress(step: str, progress: float):
+                task_manager.update_status(task_id, "processing", step, progress)
+
+            # 执行处理
+            result = workflow.process_video(
+                video_path=str(video_path),
+                output_dir=str(task_dir),
+                keep_temp=keep_temp,
+                start_from=start_from
+            )
+
+            # 处理完成
+            task_manager.update_status(task_id, "completed", "finished", 1.0)
+
+        except Exception as e:
+            # 处理失败
+            task_manager.update_status(task_id, "failed", error_message=str(e))
 
 if __name__=="__main__":
     main()

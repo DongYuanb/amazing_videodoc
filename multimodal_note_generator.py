@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 图文混排笔记生成器 - 将视频转换为结构化的图文笔记
+支持多种导出格式：JSON、Markdown、HTML
 """
 import os
 import json
