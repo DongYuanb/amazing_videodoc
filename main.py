@@ -181,37 +181,65 @@ class VideoProcessingWorkflow:
         """从视频中提取音频（委托给ffmpeg_process模块）"""
         return extract_audio_for_asr(video_path, output_audio, self.ffmpeg_path)
     
-    def run_asr(self,audio_path:str,output_json:Optional[str]=None)->str:
+    def run_asr(self,audio_path:str,output_json:Optional[str]=None,
+               progress_callback=None)->str:
         """运行ASR转录（使用ASR服务模块）"""
         if output_json is None:
             output_json=f"{Path(audio_path).stem}_asr.json"
 
         try:
-            return self.asr_service.transcribe_audio(audio_path, output_json)
+            if progress_callback:
+                return self.asr_service.transcribe_audio_with_progress(
+                    audio_path, output_json, progress_callback
+                )
+            else:
+                return self.asr_service.transcribe_audio(audio_path, output_json)
         except Exception as e:
             raise RuntimeError(f"ASR转录失败: {e}")
     
-    def merge_texts(self,asr_json:str,output_merged:Optional[str]=None)->str:
+    def merge_texts(self,asr_json:str,output_merged:Optional[str]=None,
+                   progress_callback=None)->str:
         """合并ASR文本"""
         if output_merged is None:
             output_merged=f"{Path(asr_json).stem}_merged.json"
-        
-        if self.text_merger.process_file(asr_json,output_merged):
-            print(f"文本合并完成: {output_merged}")
-            return output_merged
-        else:
-            raise RuntimeError("文本合并失败")
+
+        try:
+            if progress_callback:
+                success = self.text_merger.process_file_with_progress(
+                    asr_json, output_merged, progress_callback
+                )
+            else:
+                success = self.text_merger.process_file(asr_json, output_merged)
+
+            if success:
+                print(f"文本合并完成: {output_merged}")
+                return output_merged
+            else:
+                raise RuntimeError("文本合并失败")
+        except Exception as e:
+            raise RuntimeError(f"文本合并失败: {e}")
     
-    def generate_summary(self,merged_json:str,output_summary:Optional[str]=None)->str:
+    def generate_summary(self,merged_json:str,output_summary:Optional[str]=None,
+                        progress_callback=None)->str:
         """生成摘要"""
         if output_summary is None:
             output_summary=f"{Path(merged_json).stem}_summary.json"
-        
-        if self.summary_generator.process_file(merged_json,output_summary):
-            print(f"摘要生成完成: {output_summary}")
-            return output_summary
-        else:
-            raise RuntimeError("摘要生成失败")
+
+        try:
+            if progress_callback:
+                success = self.summary_generator.process_file_with_progress(
+                    merged_json, output_summary, progress_callback
+                )
+            else:
+                success = self.summary_generator.process_file(merged_json, output_summary)
+
+            if success:
+                print(f"摘要生成完成: {output_summary}")
+                return output_summary
+            else:
+                raise RuntimeError("摘要生成失败")
+        except Exception as e:
+            raise RuntimeError(f"摘要生成失败: {e}")
 
     def generate_multimodal_notes(self, video_path:str, summary_json:str, output_dir:str)->Optional[str]:
         """生成图文混排笔记"""
@@ -281,7 +309,8 @@ class VideoProcessingWorkflow:
                      output_dir:Optional[str]=None,
                      keep_temp:bool=False,
                      start_from:str="audio_extract",
-                     existing_files:Optional[Dict[str,str]]=None)->Dict[str,str]:
+                     existing_files:Optional[Dict[str,str]]=None,
+                     progress_callback=None)->Dict[str,str]:
         """
         灵活的视频处理流程，支持从任意步骤开始
 
@@ -330,21 +359,21 @@ class VideoProcessingWorkflow:
             # 2. ASR转录
             if start_from in ["audio_extract", "asr"]:
                 print("\n2️⃣ ASR转录...")
-                asr_json=self.run_asr(audio_path,asr_json)
+                asr_json=self.run_asr(audio_path,asr_json,progress_callback)
             elif asr_json and os.path.exists(asr_json):
                 print(f"✅ 跳过ASR转录，使用现有文件: {asr_json}")
 
             # 3. 文本合并
             if start_from in ["audio_extract", "asr", "text_merge"]:
                 print("\n3️⃣ 文本合并...")
-                merged_json=self.merge_texts(asr_json,merged_json)
+                merged_json=self.merge_texts(asr_json,merged_json,progress_callback)
             elif merged_json and os.path.exists(merged_json):
                 print(f"✅ 跳过文本合并，使用现有文件: {merged_json}")
 
             # 4. 生成摘要
             if start_from in ["audio_extract", "asr", "text_merge", "summary"]:
                 print("\n4️⃣ 生成摘要...")
-                summary_json=self.generate_summary(merged_json,summary_json)
+                summary_json=self.generate_summary(merged_json,summary_json,progress_callback)
             elif summary_json and os.path.exists(summary_json):
                 print(f"✅ 跳过摘要生成，使用现有文件: {summary_json}")
             else:
@@ -679,6 +708,7 @@ if FASTAPI_AVAILABLE:
 
             # 更新进度回调
             def update_progress(step: str, progress: float):
+                print(f"🔄 进度更新: {step} - {progress:.1%}")  # 添加调试信息
                 task_manager.update_status(task_id, "processing", step, progress)
 
             # 执行处理
@@ -686,7 +716,8 @@ if FASTAPI_AVAILABLE:
                 video_path=str(video_path),
                 output_dir=str(task_dir),
                 keep_temp=keep_temp,
-                start_from=start_from
+                start_from=start_from,
+                progress_callback=update_progress
             )
 
             # 处理完成
