@@ -3,3 +3,21 @@
 2025-08-07 22:41:05,187 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
 2025-08-07 22:41:05,187 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
 2025-08-07 22:41:05,187 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-07 22:52:07,222 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-07 22:52:07,223 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-07 22:52:07,223 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-07 22:52:07,223 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-07 22:52:07,223 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-07 22:56:55,579 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-07 22:56:55,580 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-07 22:56:55,580 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-07 22:56:55,580 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-07 22:56:55,580 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-07 22:57:07,470 - main - INFO - 开始处理视频: storage/tasks/d1a0a051-8837-4caf-a73b-b49be1df6bac/original_video.mp4
+2025-08-07 22:57:07,471 - main - INFO - 输出目录: storage/tasks/d1a0a051-8837-4caf-a73b-b49be1df6bac
+2025-08-07 22:57:07,471 - main - INFO - 1️⃣ 提取音频...
+2025-08-07 22:57:07,471 - main - INFO - 🔄 进度更新: audio_extract - 10.0%
+2025-08-07 22:57:07,704 - main - INFO - 2️⃣ ASR转录...
+2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr - 20.0%
+2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr_start - 0.0%
+2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
