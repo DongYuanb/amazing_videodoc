@@ -317,29 +317,13 @@ class MultimodalNoteGenerator:
                 for frame_path in key_frames:
                     frame_name = Path(frame_path).name
 
-                    # 计算正确的图片路径
-                    if output_path and image_base_path:
-                        # 如果提供了输出路径和图片基础路径，计算相对路径
-                        output_dir = Path(output_path).parent
-                        if Path(frame_path).is_absolute():
-                            # 绝对路径，计算相对路径
-                            try:
-                                relative_path = os.path.relpath(frame_path, output_dir)
-                                image_path = relative_path
-                            except ValueError:
-                                # 无法计算相对路径，使用绝对路径
-                                image_path = frame_path
-                        else:
-                            # 相对路径，需要从图片基础路径计算
-                            full_frame_path = Path(image_base_path) / frame_path
-                            try:
-                                relative_path = os.path.relpath(full_frame_path, output_dir)
-                                image_path = relative_path
-                            except ValueError:
-                                image_path = str(full_frame_path)
+                    # 直接拼接正确的路径：/storage/tasks/{task_id}/multimodal_notes/frames/segment_xxx/unique_frame_xxx.jpg
+                    if image_base_path:
+                        # image_base_path 是 task_dir，即 /storage/tasks/{task_id}
+                        image_path = f"/{image_base_path}/multimodal_notes/{frame_path}"
                     else:
-                        # 使用原始路径
-                        image_path = frame_path
+                        # 备用方案
+                        image_path = f"multimodal_notes/{frame_path}"
 
                     lines.append(f"![{frame_name}]({image_path})")
                 lines.append("")

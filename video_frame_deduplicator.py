@@ -6,7 +6,7 @@ import json
 import time
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
-import requests
+import cohere
 import numpy as np
 from PIL import Image
 import shutil
@@ -14,8 +14,8 @@ from image_preprocessor import ImagePreprocessor, NoOpPreprocessor
 
 
 class VideoFrameDeduplicator:
-    """视频帧去重处理器：抽取视频帧，使用Jina API获取embeddings，去除相似帧"""
-    
+    """视频帧去重处理器：抽取视频帧，使用Cohere API获取embeddings，去除相似帧"""
+
     def __init__(self,
                  jina_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
@@ -26,7 +26,7 @@ class VideoFrameDeduplicator:
         初始化去重处理器
 
         Args:
-            jina_api_key: Jina API密钥
+            jina_api_key: Cohere API密钥（保持参数名不变）
             ffmpeg_path: ffmpeg可执行文件路径
             similarity_threshold: 相似度阈值，超过此值认为是重复图片
             api_timeout: API请求超时时间（秒）
@@ -36,7 +36,7 @@ class VideoFrameDeduplicator:
         self.ffmpeg_path = ffmpeg_path
         self.similarity_threshold = similarity_threshold
         self.api_timeout = api_timeout
-        self.jina_api_url = "https://api.jina.ai/v1/embeddings"
+        self.cohere_client = cohere.ClientV2(api_key=jina_api_key)
         self.image_preprocessor = image_preprocessor or NoOpPreprocessor()
 
         self._check_ffmpeg()
@@ -113,9 +113,23 @@ class VideoFrameDeduplicator:
         return frame_files
     
     def _image_to_base64(self, image_path: str) -> str:
-        """将图片转换为base64编码"""
+        """将图片转换为Cohere需要的base64格式"""
         with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+            # 检测图片格式
+            image_path_lower = image_path.lower()
+            if image_path_lower.endswith('.png'):
+                content_type = "image/png"
+            elif image_path_lower.endswith('.jpg') or image_path_lower.endswith('.jpeg'):
+                content_type = "image/jpeg"
+            elif image_path_lower.endswith('.gif'):
+                content_type = "image/gif"
+            elif image_path_lower.endswith('.webp'):
+                content_type = "image/webp"
+            else:
+                content_type = "image/jpeg"  # 默认为jpeg
+
+            return f"data:{content_type};base64,{image_data}"
     
     def get_batch_embeddings(self, image_paths: List[str], batch_size: int = 10) -> List[np.ndarray]:
         """
@@ -139,7 +153,14 @@ class VideoFrameDeduplicator:
             for path in batch_paths:
                 try:
                     base64_image = self._image_to_base64(path)
-                    input_data.append({"image": base64_image})
+                    input_data.append({
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": base64_image}
+                            }
+                        ]
+                    })
                 except Exception as e:
                     print(f"Warning: Failed to process image {path}: {e}")
                     continue
@@ -147,50 +168,39 @@ class VideoFrameDeduplicator:
             if not input_data:
                 continue
             
-            # 调用Jina API
+            # 调用Cohere API
             try:
-                embeddings = self._call_jina_api(input_data)
+                embeddings = self._call_cohere_api(input_data)
                 all_embeddings.extend(embeddings)
-                
+
                 # 添加延迟避免API限制
                 time.sleep(0.1)
-                
+
             except Exception as e:
                 print(f"Warning: API call failed for batch: {e}")
                 continue
         
         return all_embeddings
     
-    def _call_jina_api(self, input_data: List[Dict[str, Any]]) -> List[np.ndarray]:
-        """调用Jina API获取embeddings"""
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.jina_api_key}"
-        }
-        
-        payload = {
-            "model": "jina-clip-v2",
-            "input": input_data
-        }
-        
-        response = requests.post(
-            self.jina_api_url,
-            headers=headers,
-            json=payload,
-            timeout=self.api_timeout
-        )
-        
-        if response.status_code != 200:
-            raise RuntimeError(f"Jina API error: {response.status_code} - {response.text}")
-        
-        result = response.json()
-        embeddings = []
-        
-        for item in result.get("data", []):
-            embedding = np.array(item["embedding"])
-            embeddings.append(embedding)
-        
-        return embeddings
+    def _call_cohere_api(self, input_data: List[Dict[str, Any]]) -> List[np.ndarray]:
+        """调用Cohere API获取embeddings"""
+        try:
+            response = self.cohere_client.embed(
+                model="embed-v4.0",
+                input_type="image",
+                embedding_types=["float"],
+                inputs=input_data
+            )
+
+            embeddings = []
+            for embedding_data in response.embeddings.float_:
+                embedding = np.array(embedding_data)
+                embeddings.append(embedding)
+
+            return embeddings
+
+        except Exception as e:
+            raise RuntimeError(f"Cohere API error: {e}")
     
     def calculate_cosine_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """计算两个向量的余弦相似度"""

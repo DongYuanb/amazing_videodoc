@@ -8,6 +8,28 @@
 
 **API 文档**: `http://localhost:8000/docs` (Swagger UI)
 
+## 🆕 新功能特性 (v1.1.0)
+
+### 📊 详细进度回调
+- **实时进度追踪**: 每个处理步骤都有详细的进度信息
+- **步骤级监控**: `start` → `processing` → `complete/failed`
+- **精确进度百分比**: 0.0 到 1.0 的精确进度值
+
+### ⚡ 异步处理支持
+- **非阻塞 API**: 所有处理都在后台异步执行
+- **并发友好**: 支持多个任务同时处理
+- **资源优化**: 合理利用系统资源
+
+### 🛡️ 增强错误处理
+- **详细错误信息**: 精确的错误描述和位置
+- **优雅降级**: 部分失败不影响整体流程
+- **状态恢复**: 支持从中断点继续处理
+
+### 🖼️ 智能图片路径
+- **相对路径优化**: 导出文件中使用相对路径
+- **跨平台兼容**: 自动处理不同操作系统的路径差异
+- **服务器友好**: 适合 Web 部署的路径结构
+
 ## 🚀 快速开始
 
 ### 1. 启动服务
@@ -102,12 +124,21 @@ python start_api.py
 {
   "task_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "processing",
-  "current_step": "asr",
+  "current_step": "asr_processing",
   "progress": 0.6,
   "created_at": "2024-01-01T12:00:00",
   "updated_at": "2024-01-01T12:05:00",
   "error_message": null
 }
+```
+
+**详细进度步骤**:
+```
+音频提取: audio_extract
+ASR 转录: asr_start → asr_processing → asr_complete
+文本合并: text_merge_start → text_merge_processing → text_merge_complete
+摘要生成: summary_start → summary_processing → summary_complete
+图文笔记: multimodal
 ```
 
 **状态值**:
@@ -118,9 +149,9 @@ python start_api.py
 
 **处理步骤**:
 - `audio_extract`: 音频提取
-- `asr`: 语音识别
-- `text_merge`: 文本合并
-- `summary`: 摘要生成
+- `asr_start`, `asr_processing`, `asr_complete`: ASR 语音识别各阶段
+- `text_merge_start`, `text_merge_processing`, `text_merge_complete`: 文本合并各阶段
+- `summary_start`, `summary_processing`, `summary_complete`: 摘要生成各阶段
 - `multimodal`: 图文笔记生成
 
 ---
@@ -256,7 +287,6 @@ storage/tasks/{task_id}/
 ├── summary.json           # 摘要结果
 ├── multimodal_notes.json  # 图文笔记数据
 ├── notes.md              # Markdown 笔记
-├── notes.html            # HTML 笔记
 └── frames/               # 关键帧图片目录
     ├── segment_1/
     └── segment_2/
@@ -271,6 +301,23 @@ storage/tasks/{task_id}/
 3. **存储空间**: 确保有足够的磁盘空间存储临时文件和结果
 4. **API 密钥**: 需要配置 `JINA_API_KEY` 环境变量用于图片去重
 5. **并发限制**: 当前版本不支持并发处理，建议逐个处理任务
+
+## 🚀 性能优化建议
+
+### 📊 监控最佳实践
+- **轮询频率**: 建议每 2-5 秒查询一次状态，避免过于频繁
+- **超时设置**: 根据视频长度设置合理的超时时间（建议：视频时长 × 3）
+- **错误重试**: 网络错误时可以重试状态查询
+
+### 🎯 处理策略
+- **分步处理**: 可以从任意步骤开始，充分利用已有结果
+- **临时文件**: 开发时建议保留临时文件（`keep_temp: true`）便于调试
+- **图文功能**: 如不需要图文笔记，设置 `enable_multimodal: false` 可显著提升速度
+
+### 💾 存储管理
+- **定期清理**: 定期清理 `storage/tasks/` 目录下的旧任务
+- **备份重要结果**: 及时下载和备份重要的处理结果
+- **磁盘监控**: 监控磁盘使用情况，确保有足够空间
 
 ---
 
@@ -294,9 +341,17 @@ storage/tasks/{task_id}/
 
 ## 🔄 版本历史
 
-### v1.0.0 (当前版本)
+### v1.1.0 (当前版本)
 - ✅ 基础视频处理功能
 - ✅ ASR 转录和摘要生成
 - ✅ 图文笔记生成
 - ✅ 多格式导出 (Markdown, HTML, JSON)
 - ✅ RESTful API 接口
+- 🆕 **详细进度回调系统**
+- 🆕 **异步处理支持**
+- 🆕 **增强的错误处理**
+- 🆕 **智能图片路径处理**
+- 🆕 **模块化 ASR 服务**
+
+### v1.0.0
+- ✅ 初始版本，基础功能实现

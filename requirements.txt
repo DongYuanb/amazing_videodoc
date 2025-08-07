@@ -2,7 +2,7 @@
 # 需要系统安装ffmpeg二进制工具
 
 # 视频帧去重功能依赖
-requests>=2.25.0          # 用于调用Jina API
+cohere>=5.0.0             # 用于调用Cohere API
 numpy>=1.21.0             # 用于向量计算
 Pillow>=8.0.0             # 用于图片处理
 scipy>=1.7.0              # 用于高级数学计算（可选）
