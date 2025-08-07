@@ -10,7 +10,7 @@ import cohere
 import numpy as np
 from PIL import Image
 import shutil
-from image_preprocessor import ImagePreprocessor, NoOpPreprocessor
+from image_preprocessor import ImagePreprocessor
 
 
 class VideoFrameDeduplicator:
@@ -26,7 +26,7 @@ class VideoFrameDeduplicator:
         初始化去重处理器
 
         Args:
-            jina_api_key: Cohere API密钥（保持参数名不变）
+            jina_api_key: Cohere API密钥
             ffmpeg_path: ffmpeg可执行文件路径
             similarity_threshold: 相似度阈值，超过此值认为是重复图片
             api_timeout: API请求超时时间（秒）
@@ -37,18 +37,8 @@ class VideoFrameDeduplicator:
         self.similarity_threshold = similarity_threshold
         self.api_timeout = api_timeout
         self.cohere_client = cohere.ClientV2(api_key=jina_api_key)
-        self.image_preprocessor = image_preprocessor or NoOpPreprocessor()
+        self.image_preprocessor = image_preprocessor
 
-        self._check_ffmpeg()
-    
-    def _check_ffmpeg(self):
-        """检查ffmpeg可用性"""
-        try:
-            subprocess.run([self.ffmpeg_path, "-version"], 
-                         capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            raise RuntimeError(f"ffmpeg not found at {self.ffmpeg_path}")
-    
     def extract_frames(self, 
                       video_path: str, 
                       start_time: float, 
@@ -334,7 +324,7 @@ class VideoFrameDeduplicator:
 
             # 2. 预处理图片（裁剪等）
             print("\n2. Preprocessing images...")
-            if not isinstance(self.image_preprocessor, NoOpPreprocessor):
+            if not isinstance(self.image_preprocessor):
                 preprocessed_dir = os.path.join(temp_dir, "preprocessed")
                 preprocessed_paths = self.image_preprocessor.process_images(frame_paths, preprocessed_dir)
                 print(f"Preprocessed {len(preprocessed_paths)} images")
@@ -371,7 +361,7 @@ class VideoFrameDeduplicator:
                 "unique_frames": len(saved_paths),
                 "duplicates_removed": len(preprocessed_paths) - len(saved_paths),
                 "similarity_threshold": self.similarity_threshold,
-                "preprocessing_applied": not isinstance(self.image_preprocessor, NoOpPreprocessor),
+                "preprocessing_applied": not isinstance(self.image_preprocessor),
                 "output_dir": output_dir,
                 "saved_paths": saved_paths
             }
@@ -418,7 +408,7 @@ if __name__ == "__main__":
         start_time=10.0,  # 从10秒开始
         end_time=60.0,    # 到60秒结束
         output_dir="output/unique_frames",
-        fps=1,          # 每1秒抽取1帧，减少抽帧频率
+        fps=0.5,          # 每2秒抽取1帧，减少抽帧频率
     )
 
     print("VideoFrameDeduplicator ready")

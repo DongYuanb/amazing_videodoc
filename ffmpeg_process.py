@@ -105,13 +105,3 @@ def split_video(source:Union[str,Path],output_dir:Optional[str]=None,ffmpeg_path
     """便捷函数：分离音视频流"""
     processor=VideoProcessor(ffmpeg_path)
     return processor.process(source,output_dir)
-
-# 使用示例
-if __name__=="__main__":
-    # 处理本地文件
-    # audio,video=split_video("input.mp4","output/")
-
-    # 处理网络链接
-    # audio,video=split_video("https://example.com/video.mp4","output/")
-
-    print("VideoProcessor ready")

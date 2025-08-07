@@ -1,0 +1,5 @@
+2025-08-07 22:41:05,187 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-07 22:41:05,187 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-07 22:41:05,187 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-07 22:41:05,187 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-07 22:41:05,187 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
