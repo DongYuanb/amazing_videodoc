@@ -220,6 +220,145 @@ class MultimodalNoteGenerator:
         
         return output_file
 
+    def export_to_markdown(self, notes_json_path: str, output_path: str = None,
+                          image_base_path: str = None) -> str:
+        """
+        将图文笔记导出为 Markdown 格式
+
+        Args:
+            notes_json_path: 图文笔记 JSON 文件路径
+            output_path: 输出 Markdown 文件路径
+            image_base_path: 图片基础路径（用于计算相对路径）
+
+        Returns:
+            生成的 Markdown 文件路径
+        """
+        # 读取笔记数据
+        with open(notes_json_path, 'r', encoding='utf-8') as f:
+            notes_data = json.load(f)
+
+        if output_path is None:
+            output_path = f"{Path(notes_json_path).stem}.md"
+
+        # 如果没有指定图片基础路径，使用笔记文件的目录
+        if image_base_path is None:
+            image_base_path = str(Path(notes_json_path).parent)
+
+        # 生成 Markdown 内容
+        markdown_content = self._generate_markdown_content(notes_data, output_path, image_base_path)
+
+        # 保存文件
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+
+        print(f"📝 Markdown 笔记已导出: {output_path}")
+        return output_path
+
+
+    def _generate_markdown_content(self, notes_data: Dict[str, Any],
+                                  output_path: str = None,
+                                  image_base_path: str = None) -> str:
+        """生成 Markdown 内容"""
+        video_info = notes_data.get("video_info", {})
+        segments = notes_data.get("segments", [])
+        statistics = notes_data.get("statistics", {})
+
+        # 构建 Markdown
+        lines = []
+
+        # 标题和基本信息
+        lines.append(f"# 📹 视频笔记：{video_info.get('source_video', '未知视频')}")
+        lines.append("")
+        lines.append("## 📊 基本信息")
+        lines.append("")
+        lines.append(f"- **视频文件**: {video_info.get('source_video', '未知')}")
+        lines.append(f"- **生成时间**: {video_info.get('generated_at', '未知')}")
+        lines.append(f"- **总时间段**: {video_info.get('total_segments', 0)}")
+        lines.append(f"- **总关键帧**: {statistics.get('total_frames', 0)}")
+        lines.append(f"- **有效时间段**: {statistics.get('segments_with_frames', 0)}")
+        lines.append("")
+
+        # 目录
+        lines.append("## 📑 目录")
+        lines.append("")
+        for i, segment in enumerate(segments, 1):
+            start_time = segment.get("start_time", "")
+            end_time = segment.get("end_time", "")
+            lines.append(f"{i}. [{start_time} - {end_time}](#时间段-{i})")
+        lines.append("")
+
+        # 详细内容
+        lines.append("## 📝 详细内容")
+        lines.append("")
+
+        for i, segment in enumerate(segments, 1):
+            start_time = segment.get("start_time", "")
+            end_time = segment.get("end_time", "")
+            duration = segment.get("duration_seconds", 0)
+            summary = segment.get("summary", "")
+            key_frames = segment.get("key_frames", [])
+
+            # 时间段标题
+            lines.append(f"### 时间段 {i}")
+            lines.append("")
+            lines.append(f"**⏰ 时间**: {start_time} - {end_time} ({duration:.1f}秒)")
+            lines.append("")
+
+            # 摘要内容
+            lines.append("**📋 摘要**:")
+            lines.append("")
+            lines.append(summary)
+            lines.append("")
+
+            # 关键帧
+            if key_frames:
+                lines.append(f"**🖼️ 关键帧** ({len(key_frames)}张):")
+                lines.append("")
+                for frame_path in key_frames:
+                    frame_name = Path(frame_path).name
+
+                    # 计算正确的图片路径
+                    if output_path and image_base_path:
+                        # 如果提供了输出路径和图片基础路径，计算相对路径
+                        output_dir = Path(output_path).parent
+                        if Path(frame_path).is_absolute():
+                            # 绝对路径，计算相对路径
+                            try:
+                                relative_path = os.path.relpath(frame_path, output_dir)
+                                image_path = relative_path
+                            except ValueError:
+                                # 无法计算相对路径，使用绝对路径
+                                image_path = frame_path
+                        else:
+                            # 相对路径，需要从图片基础路径计算
+                            full_frame_path = Path(image_base_path) / frame_path
+                            try:
+                                relative_path = os.path.relpath(full_frame_path, output_dir)
+                                image_path = relative_path
+                            except ValueError:
+                                image_path = str(full_frame_path)
+                    else:
+                        # 使用原始路径
+                        image_path = frame_path
+
+                    lines.append(f"![{frame_name}]({image_path})")
+                lines.append("")
+            else:
+                lines.append("*该时间段无关键帧*")
+                lines.append("")
+
+            lines.append("---")
+            lines.append("")
+
+        # 页脚
+        lines.append("## 🔧 生成信息")
+        lines.append("")
+        lines.append("本笔记由视频处理 API 自动生成")
+        lines.append(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        return "\n".join(lines)
+
+
 
 # 便捷函数
 def generate_video_notes(video_path: str,

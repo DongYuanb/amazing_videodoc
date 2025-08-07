@@ -572,6 +572,102 @@ if FASTAPI_AVAILABLE:
             "results": results
         }
 
+    @app.get("/api/export/{task_id}/markdown")
+    async def export_markdown(task_id: str):
+        """导出 Markdown 格式笔记"""
+        try:
+            metadata = task_manager.load_metadata(task_id)
+        except:
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+        if metadata["status"] != "completed":
+            raise HTTPException(status_code=400, detail="任务尚未完成")
+
+        task_dir = task_manager.get_task_dir(task_id)
+        # 图文笔记文件可能在两个位置之一
+        notes_file = task_dir / "multimodal_notes" / "multimodal_notes.json"
+        if not notes_file.exists():
+            notes_file = task_dir / "multimodal_notes.json"
+
+        if not notes_file.exists():
+            raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+        # 生成 Markdown
+        generator = MultimodalNoteGenerator(
+            jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+        )
+
+        markdown_file = task_dir / "notes.md"
+        # 传递图片基础路径，确保相对路径计算正确
+        generator.export_to_markdown(
+            notes_json_path=str(notes_file),
+            output_path=str(markdown_file),
+            image_base_path=str(task_dir)
+        )
+
+        return FileResponse(
+            path=str(markdown_file),
+            filename=f"video_notes_{task_id}.md",
+            media_type="text/markdown"
+        )
+
+    # @app.get("/api/export/{task_id}/html")
+    # async def export_html(task_id: str):
+    #     """导出 HTML 格式笔记"""
+    #     try:
+    #         metadata = task_manager.load_metadata(task_id)
+    #     except:
+    #         raise HTTPException(status_code=404, detail="任务不存在")
+
+    #     if metadata["status"] != "completed":
+    #         raise HTTPException(status_code=400, detail="任务尚未完成")
+
+    #     task_dir = task_manager.get_task_dir(task_id)
+    #     notes_file = task_dir / "multimodal_notes.json"
+
+    #     if not notes_file.exists():
+    #         raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+    #     # 生成 HTML
+    #     generator = MultimodalNoteGenerator(
+    #         jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+    #     )
+
+    #     html_file = task_dir / "notes.html"
+    #     generator.export_to_html(str(notes_file), str(html_file))
+
+    #     return FileResponse(
+    #         path=str(html_file),
+    #         filename=f"video_notes_{task_id}.html",
+    #         media_type="text/html"
+    #     )
+
+    @app.get("/api/export/{task_id}/json")
+    async def export_json(task_id: str):
+        """导出原始 JSON 格式笔记"""
+        try:
+            metadata = task_manager.load_metadata(task_id)
+        except:
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+        if metadata["status"] != "completed":
+            raise HTTPException(status_code=400, detail="任务尚未完成")
+
+        task_dir = task_manager.get_task_dir(task_id)
+        # 图文笔记文件可能在两个位置之一
+        notes_file = task_dir / "multimodal_notes" / "multimodal_notes.json"
+        if not notes_file.exists():
+            notes_file = task_dir / "multimodal_notes.json"
+
+        if not notes_file.exists():
+            raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+        return FileResponse(
+            path=str(notes_file),
+            filename=f"video_notes_{task_id}.json",
+            media_type="application/json"
+        )
+
     async def process_video_background(task_id: str, start_from: str, enable_multimodal: bool, keep_temp: bool):
         """后台处理视频的函数"""
         try:

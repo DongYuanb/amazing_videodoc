@@ -118,13 +118,13 @@ class Summarizer:
             "summary": summary
         }
 
-    def process_file(self, input_path: str, output_path: str) -> None:
-        """加载→逐条整理→保存"""
+    def process_file(self, input_path: str, output_path: str) -> bool:
+        """加载→逐条整理→保存，返回成功状态"""
         try:
             timed_texts = self.load_timed_texts(input_path)
             if not timed_texts:
                 print("没有有效文本数据可处理", file=sys.stderr)
-                return
+                return False
 
             print(f"共 {len(timed_texts)} 个时间段，逐条整理中...")
             summaries = []
@@ -137,10 +137,11 @@ class Summarizer:
                 json.dump({"summaries": summaries}, f, ensure_ascii=False, indent=4)
 
             print(f"处理完成，总结已保存至 {output_path}")
+            return True
 
         except Exception as e:
             print(f"处理失败: {str(e)}", file=sys.stderr)
-            sys.exit(1)
+            return False
 
 if __name__ == "__main__":
     INPUT_FILE = "2.json"    # 输入文件

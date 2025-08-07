@@ -11,3 +11,5 @@
 *.pdf
 /output*/
 *.json
+./stroage
+*.jpg
