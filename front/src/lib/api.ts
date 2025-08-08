@@ -2,6 +2,7 @@
 import { config } from './config';
 
 const API_BASE_URL = config.apiBaseUrl;
+const IMAGE_BASE_URL = config.imageBaseUrl;
 
 // API响应类型定义
 export interface UploadResponse {
@@ -191,10 +192,8 @@ export async function getTaskResults(taskId: string): Promise<ResultsResponse> {
       // 匹配相同时间段的多模态条目
       const mm = mmSegments.find(s => s.start_time === item.start_time && s.end_time === item.end_time);
       const keyframes: string[] = (mm?.key_frames || []).map((relPath: string) => {
-        // 将相对路径转为可访问 URL
-        // 后端导出 markdown 时假定访问路径为 /storage/tasks/{task_id}/multimodal_notes/{relPath}
-        // 这里保持一致约定：
-        const base = `${API_BASE_URL}/storage/tasks/${taskId}/multimodal_notes`;
+        // 将相对路径转为可访问 URL（可配置图片域）
+        const base = `${IMAGE_BASE_URL}/tasks/${taskId}/multimodal_notes`;
         return `${base}/${relPath}`;
       });
 
