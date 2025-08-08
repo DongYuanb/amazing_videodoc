@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Clock, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
@@ -18,12 +18,20 @@ interface SummarySegmentProps {
 }
 
 const SummarySegment: React.FC<SummarySegmentProps> = ({ segment, isActive, onClick }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const MAX_CHARS = 220; // 超过则折叠
+
+  const isLong = (segment.summary?.length || 0) > MAX_CHARS;
+  const displayText = !isLong || expanded
+    ? segment.summary
+    : segment.summary.slice(0, MAX_CHARS) + '...';
+
   return (
-    <Card 
+    <Card
       className={`
         p-4 cursor-pointer transition-all card-striped shadow-elegant hover:shadow-hover
-        ${isActive 
-          ? 'border-primary bg-primary/5' 
+        ${isActive
+          ? 'border-primary bg-primary/5'
           : 'border-border hover:border-primary/30 hover:bg-background-secondary'
         }
       `}
@@ -61,14 +69,22 @@ const SummarySegment: React.FC<SummarySegmentProps> = ({ segment, isActive, onCl
               </span>
             </div>
           </div>
-          
+
           <h3 className="font-semibold text-foreground mb-2 line-clamp-1">
             {segment.title}
           </h3>
-          
-          <p className="text-foreground-muted text-sm leading-relaxed line-clamp-3">
-            {segment.summary}
+
+          <p className={`text-foreground-muted text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+            {displayText}
           </p>
+          {isLong && (
+            <button
+              className="mt-2 text-xs text-primary hover:underline"
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            >
+              {expanded ? '收起' : '展开更多'}
+            </button>
+          )}
         </div>
       </div>
     </Card>

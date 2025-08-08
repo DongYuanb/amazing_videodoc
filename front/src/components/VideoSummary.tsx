@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Download, Play, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Clock, Download, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import SummarySegment from './SummarySegment';
 import { getTaskResults, exportMarkdown, ResultsResponse } from '@/lib/api';
@@ -134,9 +133,27 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-12">
+    <div className="w-full">
+      {/* Top Video - smaller, centered */}
+      <div className="w-full">
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="relative w-full h-[60vh] md:h-[70vh] bg-black rounded-lg overflow-hidden shadow-elegant flex items-center justify-center">
+            <video
+              src={videoData.url}
+              controls
+              className="w-full h-full object-contain"
+              onTimeUpdate={(e: React.SyntheticEvent<HTMLVideoElement>) => setCurrentTime(e.currentTarget.currentTime)}
+            />
+            <div className="absolute left-4 bottom-4 text-xs text-white/80 flex items-center gap-2">
+              <Clock className="w-3 h-3" />
+              <span>Current: {formatDuration(Math.floor(currentTime))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header & Actions under the video */}
+      <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -169,50 +186,29 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Video Player */}
-        <div className="lg:col-span-1">
-          <Card className="p-3 card-striped shadow-elegant hover:shadow-hover transition-shadow">
-            <div className="aspect-video bg-foreground rounded mb-3 flex items-center justify-center">
-              <video
-                src={videoData.url}
-                controls
-                className="w-full h-full rounded"
-                onTimeUpdate={(e: React.SyntheticEvent<HTMLVideoElement>) => setCurrentTime(e.currentTarget.currentTime)}
+      {/* Summary Notes below */}
+      <div className="max-w-6xl mx-auto px-4 pb-12">
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <h2 className="text-xl font-medium text-foreground">
+              Summary Notes
+            </h2>
+          </div>
+          <div className="space-y-4">
+            {results?.segments?.map((segment, index) => (
+              <SummarySegment
+                key={segment.id}
+                segment={segment}
+                isActive={currentTime >= segment.timeInSeconds &&
+                  (index === (results?.segments?.length || 0) - 1 || currentTime < (results?.segments?.[index + 1]?.timeInSeconds || 0))}
+                onClick={() => handleSegmentClick(segment.timeInSeconds)}
               />
-            </div>
-            <div className="flex items-center gap-2 text-xs text-foreground-muted">
-              <Clock className="w-3 h-3" />
-              <span>Current: {formatDuration(Math.floor(currentTime))}</span>
-            </div>
-          </Card>
-        </div>
-
-        {/* Summary Notes */}
-        <div className="lg:col-span-2">
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-2 h-2 bg-primary rounded-full"></div>
-              <h2 className="text-xl font-medium text-foreground">
-                Summary Notes
-              </h2>
-            </div>
-            
-            <div className="space-y-4">
-              {results?.segments?.map((segment, index) => (
-                <SummarySegment
-                  key={segment.id}
-                  segment={segment}
-                  isActive={currentTime >= segment.timeInSeconds &&
-                    (index === (results?.segments?.length || 0) - 1 || currentTime < (results?.segments?.[index + 1]?.timeInSeconds || 0))}
-                  onClick={() => handleSegmentClick(segment.timeInSeconds)}
-                />
-              )) || (
-                <div className="text-center text-muted-foreground py-8">
-                  暂无摘要数据
-                </div>
-              )}
-            </div>
+            )) || (
+              <div className="text-center text-muted-foreground py-8">
+                暂无摘要数据
+              </div>
+            )}
           </div>
         </div>
       </div>

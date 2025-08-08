@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 
 const Navigation: React.FC = () => {
   return (
@@ -18,26 +17,7 @@ const Navigation: React.FC = () => {
               </span>
             </div>
             
-            <div className="hidden md:flex items-center space-x-6">
-              <button className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Product <span className="text-xs">▼</span>
-              </button>
-              <Link to="/extensions" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Extensions
-              </Link>
-              <a href="#" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Docs
-              </a>
-              <a href="#" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Blog
-              </a>
-              <a href="#" className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Pricing
-              </a>
-              <button className="text-sm text-foreground-muted hover:text-foreground transition-colors">
-                Resources <span className="text-xs">▼</span>
-              </button>
-            </div>
+
           </div>
           
           <div className="flex items-center space-x-4">
