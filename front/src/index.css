@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Zed-inspired Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Zed exact color palette */
+    --background: 0 0% 100%;
+    --background-secondary: 210 20% 98%;
+    --background-tertiary: 214 32% 91%;
+    --foreground: 222 84% 5%;
+    --foreground-muted: 215 16% 47%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 5%;
+
+    /* Zed's signature blue */
+    --primary: 217 91% 60%;
+    --primary-hover: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 98%;
+    --secondary-hover: 214 32% 91%;
+    --secondary-foreground: 222 84% 5%;
+
+    --muted: 210 20% 98%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 20% 98%;
+    --accent-foreground: 222 84% 5%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    /* Zed-style gradients and shadows */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 50%) 100%);
+    --shadow-elegant: 0 1px 2px 0 hsl(222 84% 5% / 0.05);
+    --shadow-hover: 0 4px 6px -1px hsl(222 84% 5% / 0.1), 0 2px 4px -1px hsl(222 84% 5% / 0.06);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter;
+  }
+}
+
+@layer components {
+  /* Zed-inspired component styles */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+  
+  .bg-background-secondary {
+    background-color: hsl(var(--background-secondary));
+  }
+  
+  .text-foreground-muted {
+    color: hsl(var(--foreground-muted));
+  }
+  
+  .border-primary-hover:hover {
+    border-color: hsl(var(--primary-hover));
+  }
+  
+  .bg-primary-hover:hover {
+    background-color: hsl(var(--primary-hover));
+  }
+  
+  .bg-secondary-hover:hover {
+    background-color: hsl(var(--secondary-hover));
+  }
+
+  /* Paper-like site background with grid, subtle noise and vignette */
+  .site-bg {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(1200px 600px at 50% -10%, hsl(var(--primary) / 0.08), transparent 60%),
+      radial-gradient(800px 500px at 100% 120%, hsl(var(--foreground) / 0.06), transparent 60%),
+      linear-gradient(to right, hsl(var(--foreground) / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.06) 1px, transparent 1px),
+      radial-gradient(hsl(var(--foreground) / 0.03) 0.5px, transparent 0.5px);
+    background-size: auto, auto, 40px 40px, 40px 40px, 4px 4px;
+    background-position: center, center, -1px -1px, -1px -1px, 0 0;
+  }
+
+  /* Glassy navbar background */
+  .nav-glass {
+    background-color: hsl(var(--background) / 0.8);
+    backdrop-filter: saturate(160%) blur(6px);
+  }
+
+  /* Card surface with subtle diagonal pinstripes + inner highlights */
+  .card-striped {
+    position: relative;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+  .card-striped::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, hsl(var(--foreground) / 0.06), transparent 40%),
+      repeating-linear-gradient(-45deg,
+        hsl(var(--foreground) / 0.05) 0px,
+        hsl(var(--foreground) / 0.05) 1px,
+        transparent 1px,
+        transparent 6px);
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+  }
+  .card-striped::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 1px 0 hsl(var(--foreground) / 0.08),
+      inset 0 -1px 0 hsl(var(--background-tertiary) / 0.5);
+  }
+}
