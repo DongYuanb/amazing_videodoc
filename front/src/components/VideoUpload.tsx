@@ -159,27 +159,34 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoUploaded }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-16">
+    <div className="max-w-4xl mx-auto px-4 py-16 relative">
+      <div className="wave-layer"></div>
       <div className="text-center mb-12">
         <p className="text-sm font-medium text-foreground-muted uppercase tracking-wide mb-4">
-          AI-POWERED VIDEO ANALYSIS
+          AI-POWERED VIDEO INTELLIGENCE | AI 视频智能解析
         </p>
         <h1 className="text-5xl font-semibold text-foreground mb-6 leading-tight">
-          The editor for what's next
+          Smart Video Insights
+          <span className="block text-4xl mt-2 text-foreground-muted">
+            智能视频重点提取
+          </span>
         </h1>
         <p className="text-xl text-foreground-muted max-w-2xl mx-auto leading-relaxed">
-          Upload your video and get AI-generated summaries designed for 
-          high-performance collaboration with humans and AI.
+          Transform any video into structured key insights with AI precision.
+          <br />
+          <span className="text-lg">
+            将任何视频转化为结构化重点内容，AI 精准解析每个关键时刻
+          </span>
         </p>
       </div>
 
       <div className="flex justify-center gap-4 mb-16">
         <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary-hover">
           <Upload className="w-4 h-4 mr-2" />
-          Upload now
+          开始解析 Start Analysis
         </Button>
         <Button variant="outline" size="lg">
-          Clone source
+          查看示例 View Demo
         </Button>
       </div>
 
@@ -213,10 +220,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoUploaded }) => {
               </div>
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              Drop your video here
+              拖拽视频到这里 | Drop your video here
             </h3>
             <p className="text-sm text-foreground-muted mb-6">
-              Supports MP4, MOV, AVI files up to 500MB
+              支持 MP4, MOV, AVI 格式，最大 500MB | Supports MP4, MOV, AVI up to 500MB
             </p>
             <Button 
               variant="default" 

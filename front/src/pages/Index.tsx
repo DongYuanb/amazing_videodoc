@@ -22,8 +22,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen site-bg">
+      <div className="wave-layer"></div>
       <Navigation />
-      
+
       <main className="py-12 px-6">
         {!videoData ? (
           <VideoUpload onVideoUploaded={handleVideoUploaded} />
