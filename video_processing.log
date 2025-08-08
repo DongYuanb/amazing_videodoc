@@ -238,3 +238,101 @@
 2025-08-08 21:18:32,506 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
 2025-08-08 21:18:33,739 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
 2025-08-08 21:18:33,852 - main - INFO - 清理临时音频文件
+2025-08-08 23:18:03,773 - main - INFO - 开始处理视频: storage\tasks\5d9968f0-dfb1-4ee3-a958-c09630ea13f3\original_video.mp4
+2025-08-08 23:18:03,775 - main - INFO - 输出目录: storage\tasks\5d9968f0-dfb1-4ee3-a958-c09630ea13f3
+2025-08-08 23:18:10,279 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:18:15,964 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:18:21,180 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:23,994 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:26,557 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:29,142 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:31,791 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:34,409 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:37,066 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:18:37,303 - main - INFO - 清理临时音频文件
+2025-08-08 23:24:31,161 - main - INFO - 开始处理视频: storage\tasks\811b2b79-ff1d-411b-9f46-9321115cc150\original_video.mp4
+2025-08-08 23:24:31,161 - main - INFO - 输出目录: storage\tasks\811b2b79-ff1d-411b-9f46-9321115cc150
+2025-08-08 23:24:36,515 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:24:42,701 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:24:47,798 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:24:50,909 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:24:53,981 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:24:57,084 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:25:00,031 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:25:04,737 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:25:07,485 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:25:08,034 - main - INFO - 清理临时音频文件
+2025-08-08 23:27:44,590 - main - INFO - 开始处理视频: storage\tasks\6fcfb459-056e-4c88-8c24-d0abb448a945\original_video.mp4
+2025-08-08 23:27:44,590 - main - INFO - 输出目录: storage\tasks\6fcfb459-056e-4c88-8c24-d0abb448a945
+2025-08-08 23:27:50,619 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:27:58,521 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:01,928 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:03,384 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:05,111 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:07,909 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:11,691 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:14,629 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:17,140 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:28:22,351 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:27,341 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:29,832 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:31,664 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:34,855 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:35,699 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:38,897 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:41,160 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:44,350 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:46,326 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:48,309 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:49,785 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:28:49,992 - main - INFO - 清理临时音频文件
+2025-08-08 23:36:48,317 - main - INFO - 开始处理视频: storage\tasks\71e20008-9cb1-4e53-ae67-fbe27e218a53\original_video.mp4
+2025-08-08 23:36:48,318 - main - INFO - 输出目录: storage\tasks\71e20008-9cb1-4e53-ae67-fbe27e218a53
+2025-08-08 23:36:55,295 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:37:03,442 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:37:10,891 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:14,104 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:17,035 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:19,998 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:22,950 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:25,892 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:28,391 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:37:29,692 - main - INFO - 清理临时音频文件
+2025-08-08 23:38:13,370 - main - INFO - 开始处理视频: storage\tasks\c4d98c65-c711-425d-a768-7f96786f79e9\original_video.mp4
+2025-08-08 23:38:13,371 - main - INFO - 输出目录: storage\tasks\c4d98c65-c711-425d-a768-7f96786f79e9
+2025-08-08 23:38:19,611 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:38:27,311 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:38:35,658 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:38,652 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:41,541 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:44,389 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:47,584 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:50,379 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:52,977 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:38:53,306 - main - INFO - 清理临时音频文件
+2025-08-08 23:39:17,409 - main - INFO - 开始处理视频: storage\tasks\01180788-b279-4c69-af2f-7f8d66d81bfb\original_video.mp4
+2025-08-08 23:39:17,410 - main - INFO - 输出目录: storage\tasks\01180788-b279-4c69-af2f-7f8d66d81bfb
+2025-08-08 23:39:22,823 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:39:30,479 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:39:37,091 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:40,061 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:43,079 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:46,176 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:49,129 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:52,289 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:54,736 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:39:54,983 - main - INFO - 清理临时音频文件
+2025-08-08 23:40:02,797 - main - INFO - 开始处理视频: storage\tasks\ff22e56f-6268-4771-946d-d8363d9dd0cf\original_video.mp4
+2025-08-08 23:40:02,797 - main - INFO - 输出目录: storage\tasks\ff22e56f-6268-4771-946d-d8363d9dd0cf
+2025-08-08 23:40:07,910 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:40:19,967 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 408 Request Timeout"
+2025-08-08 23:40:19,967 - openai._base_client - INFO - Retrying request to /chat/completions in 0.376814 seconds
+2025-08-08 23:40:20,975 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 23:40:29,107 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:40:32,616 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:40:46,018 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:40:49,116 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:40:51,743 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:40:54,590 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:41:03,750 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 23:41:04,083 - main - INFO - 清理临时音频文件

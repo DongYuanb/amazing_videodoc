@@ -30,7 +30,8 @@ export interface Segment {
   timeInSeconds: number;
   title: string;
   summary: string;
-  keyframe: string;
+  keyframe: string; // 首图（用于卡片预览）
+  keyframes?: string[]; // 多张图片（来自 multimodal_notes ）
 }
 
 // 后端返回的原始结果格式
@@ -159,14 +160,26 @@ function timeToSeconds(timeStr: string): number {
   }
 }
 
-// 4. 获取处理结果
+// 4. 获取处理结果（含多模态图片）
 export async function getTaskResults(taskId: string): Promise<ResultsResponse> {
-  // 获取后端原始数据
+  // 1) 获取后端原始数据（摘要等）
   const backendData = await apiRequest<BackendResultsResponse>(`/api/results/${taskId}`);
+
+  // 2) 获取多模态 JSON（可能不存在，失败时忽略）
+  let multimodal: any | null = null;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/export/${taskId}/json`);
+    if (res.ok) {
+      multimodal = await res.json();
+    }
+  } catch (_) {}
 
   // 转换为前端期望的格式
   const segments: Segment[] = [];
   let totalDuration = 0;
+
+  // 将多模态段落索引，方便按时间匹配
+  const mmSegments: Array<any> = multimodal?.segments || [];
 
   // 从摘要数据中提取片段
   if (backendData.results.summary?.summaries) {
@@ -175,24 +188,35 @@ export async function getTaskResults(taskId: string): Promise<ResultsResponse> {
       const endSeconds = timeToSeconds(item.end_time);
       totalDuration = Math.max(totalDuration, endSeconds);
 
+      // 匹配相同时间段的多模态条目
+      const mm = mmSegments.find(s => s.start_time === item.start_time && s.end_time === item.end_time);
+      const keyframes: string[] = (mm?.key_frames || []).map((relPath: string) => {
+        // 将相对路径转为可访问 URL
+        // 后端导出 markdown 时假定访问路径为 /storage/tasks/{task_id}/multimodal_notes/{relPath}
+        // 这里保持一致约定：
+        const base = `${API_BASE_URL}/storage/tasks/${taskId}/multimodal_notes`;
+        return `${base}/${relPath}`;
+      });
+
       segments.push({
         id: `segment_${index}`,
         timestamp: `${item.start_time} - ${item.end_time}`,
         timeInSeconds: startSeconds,
         title: `片段 ${index + 1} (${item.start_time} - ${item.end_time})`,
         summary: item.summary,
-        keyframe: '' // 暂时为空，后续可以添加关键帧
+        keyframe: keyframes[0] || '',
+        keyframes,
       });
     });
   }
 
   return {
     task_id: backendData.task_id,
-    filename: '', // 后端没有返回文件名，暂时为空
+    filename: '',
     status: backendData.status,
     segments,
     total_duration: totalDuration,
-    created_at: '' // 后端没有返回创建时间，暂时为空
+    created_at: ''
   };
 }
 

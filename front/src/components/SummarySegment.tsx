@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Clock, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import LazyImage from '@/components/LazyImage';
 
 interface Segment {
   id: string;
@@ -9,6 +10,7 @@ interface Segment {
   title: string;
   summary: string;
   keyframe: string;
+  keyframes?: string[]; // 多图（来自 multimodal_notes）
 }
 
 interface SummarySegmentProps {
@@ -38,24 +40,32 @@ const SummarySegment: React.FC<SummarySegmentProps> = ({ segment, isActive, onCl
       onClick={onClick}
     >
       <div className="flex gap-4">
-        {/* Keyframe Image */}
+        {/* Thumbnails */}
         <div className="flex-shrink-0">
-          <div className="relative w-24 h-14 rounded-lg overflow-hidden bg-muted">
-            <img
+          {/* 预览区：首图 + 折叠按钮 */}
+          <div className="relative w-28 h-16 rounded-lg overflow-hidden bg-muted">
+            <LazyImage
               src={segment.keyframe}
               alt={`Keyframe for ${segment.title}`}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNTYiIHZpZXdCb3g9IjAgMCA5NiA1NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9IjU2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00OCAyOEwyNCA0MEwyNCA0MEwyNCAzNkwyNCAzNkwyNCAzMkwyNCAzMkwyNCAyOEwyNCAyOEwyNCAyNEwyNCAyNEwyNCAyMEwyNCAyMEwyNCAzNkw0OCA0OEw3MiAzNkw3MiAzNkw3MiAzMkw3MiAzMkw3MiAyOEw3MiAyOEw3MiAyNEw3MiAyNEw3MiAyMEw3MiAyMEw0OCAyOFoiIGZpbGw9IiM5Q0E5QkEiLz4KPC9zdmc+Cg==';
-              }}
+              className="w-full h-full"
             />
-            {/* Play overlay */}
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-              <div className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center">
-                <Play className="w-3 h-3 text-gray-800 ml-0.5" />
+            {!!(segment.keyframes && segment.keyframes.length > 1) && (
+              <div className="absolute right-1 bottom-1 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
+                +{segment.keyframes.length - 1}
               </div>
-            </div>
+            )}
           </div>
+
+          {/* 折叠的多图网格（展开状态下显示）*/}
+          {expanded && segment.keyframes && segment.keyframes.length > 1 && (
+            <div className="mt-2 grid grid-cols-3 gap-1 w-56">
+              {segment.keyframes.slice(0, 12).map((src, idx) => (
+                <div key={idx} className="relative w-full pt-[56%] bg-muted rounded overflow-hidden">
+                  <LazyImage src={src} alt={`frame-${idx}`} className="absolute inset-0" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content */}
