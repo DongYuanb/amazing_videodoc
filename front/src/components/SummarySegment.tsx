@@ -31,35 +31,40 @@ const SummarySegment: React.FC<SummarySegmentProps> = ({ segment, isActive, onCl
   return (
     <Card
       className={`
-        p-4 cursor-pointer transition-all card-striped shadow-elegant hover:shadow-hover
-        ${isActive
-          ? 'border-primary bg-primary/5'
-          : 'border-border hover:border-primary/30 hover:bg-background-secondary'
-        }
+        p-4 transition-all card-striped shadow-elegant hover:shadow-hover
+        ${isActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-background-secondary'}
       `}
-      onClick={onClick}
     >
-      <div className="flex gap-4">
-        {/* Thumbnails */}
-        <div className="flex-shrink-0">
-          {/* 预览区：首图 + 折叠按钮 */}
-          <div className="relative w-28 h-16 rounded-lg overflow-hidden bg-muted">
-            <LazyImage
-              src={segment.keyframe}
-              alt={`Keyframe for ${segment.title}`}
-              className="w-full h-full"
-            />
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Media column - 1/3 width */}
+        <div className="md:w-1/3 w-full">
+          <div className="relative w-full pt-[56%] rounded-lg overflow-hidden bg-muted">
+            <LazyImage src={segment.keyframe} alt={`Keyframe for ${segment.title}`} className="absolute inset-0" />
             {!!(segment.keyframes && segment.keyframes.length > 1) && (
-              <div className="absolute right-1 bottom-1 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
+              <div className="absolute right-2 bottom-2 text-[10px] bg-black/70 text-white px-2 py-0.5 rounded-full">
                 +{segment.keyframes.length - 1}
               </div>
             )}
           </div>
 
-          {/* 折叠的多图网格（展开状态下显示）*/}
-          {expanded && segment.keyframes && segment.keyframes.length > 1 && (
-            <div className="mt-2 grid grid-cols-3 gap-1 w-56">
-              {segment.keyframes.slice(0, 12).map((src, idx) => (
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition"
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            >
+              {expanded ? '收起图片' : '查看全部图片'}
+            </button>
+            <button
+              className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-background-secondary transition flex items-center gap-1"
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+            >
+              <Play className="w-3 h-3" /> 跳转到该时间
+            </button>
+          </div>
+
+          {expanded && segment.keyframes && segment.keyframes.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {segment.keyframes.map((src, idx) => (
                 <div key={idx} className="relative w-full pt-[56%] bg-muted rounded overflow-hidden">
                   <LazyImage src={src} alt={`frame-${idx}`} className="absolute inset-0" />
                 </div>
@@ -68,31 +73,24 @@ const SummarySegment: React.FC<SummarySegmentProps> = ({ segment, isActive, onCl
           )}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
+        {/* Content column - 2/3 width */}
+        <div className="md:w-2/3 w-full min-w-0">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-sm">
               <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-primary' : 'bg-muted'}`}></div>
               <Clock className="w-4 h-4 text-foreground-muted" />
-              <span className={`font-medium ${isActive ? 'text-primary' : 'text-foreground-muted'}`}>
-                {segment.timestamp}
-              </span>
+              <span className={`font-medium ${isActive ? 'text-primary' : 'text-foreground-muted'}`}>{segment.timestamp}</span>
             </div>
           </div>
 
-          <h3 className="font-semibold text-foreground mb-2 line-clamp-1">
-            {segment.title}
-          </h3>
-
-          <p className={`text-foreground-muted text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
-            {displayText}
-          </p>
+          <h3 className="font-semibold text-foreground mb-2 line-clamp-1">{segment.title}</h3>
+          <p className={`text-foreground-muted text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>{displayText}</p>
           {isLong && (
             <button
               className="mt-2 text-xs text-primary hover:underline"
               onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
             >
-              {expanded ? '收起' : '展开更多'}
+              {expanded ? '收起文本' : '展开更多'}
             </button>
           )}
         </div>
