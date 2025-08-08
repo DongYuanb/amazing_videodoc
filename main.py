@@ -15,6 +15,9 @@ from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import markdown
+import base64
+import re
 from task_logger import TaskLogger, create_task_logger, close_task_logger
 from dotenv import load_dotenv
 
@@ -411,8 +414,8 @@ async def get_results(task_id: str):
     }
 
 @app.get("/api/export/{task_id}/markdown")
-async def export_markdown(task_id: str):
-    """导出 Markdown 格式笔记"""
+async def export_markdown(task_id: str, force_regen: bool = False):
+    """导出 Markdown 格式笔记（优先使用用户编辑版本）"""
     try:
         metadata = task_manager.load_metadata(task_id)
     except:
@@ -422,7 +425,17 @@ async def export_markdown(task_id: str):
         raise HTTPException(status_code=400, detail="任务尚未完成")
 
     task_dir = task_manager.get_task_dir(task_id)
-    # 图文笔记文件可能在两个位置之一
+    markdown_file = task_dir / "notes.md"
+
+    # 如果用户编辑的 notes.md 存在且不强制重新生成，直接返回
+    if markdown_file.exists() and not force_regen:
+        return FileResponse(
+            path=str(markdown_file),
+            filename=f"video_notes_{task_id}.md",
+            media_type="text/markdown"
+        )
+
+    # 否则从 JSON 重新生成
     notes_file = task_dir / "multimodal_notes" / "multimodal_notes.json"
     if not notes_file.exists():
         notes_file = task_dir / "multimodal_notes.json"
@@ -435,7 +448,6 @@ async def export_markdown(task_id: str):
         jina_api_key=os.getenv("JINA_API_KEY", "dummy")
     )
 
-    markdown_file = task_dir / "notes.md"
     # 传递图片基础路径，确保相对路径计算正确
     generator.export_to_markdown(
         notes_json_path=str(notes_file),
@@ -473,6 +485,191 @@ async def export_json(task_id: str):
         path=str(notes_file),
         filename=f"video_notes_{task_id}.json",
         media_type="application/json"
+    )
+
+@app.get("/api/notes/{task_id}")
+async def get_notes(task_id: str):
+    """获取笔记内容（优先返回用户编辑版本）"""
+    try:
+        metadata = task_manager.load_metadata(task_id)
+    except:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if metadata["status"] != "completed":
+        raise HTTPException(status_code=400, detail="任务尚未完成")
+
+    task_dir = task_manager.get_task_dir(task_id)
+    markdown_file = task_dir / "notes.md"
+
+    # 如果用户编辑的 notes.md 存在，直接返回
+    if markdown_file.exists():
+        return FileResponse(
+            path=str(markdown_file),
+            media_type="text/markdown"
+        )
+
+    # 否则从 JSON 生成 markdown
+    notes_file = task_dir / "multimodal_notes" / "multimodal_notes.json"
+    if not notes_file.exists():
+        notes_file = task_dir / "multimodal_notes.json"
+
+    if not notes_file.exists():
+        raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+    # 生成 Markdown
+    generator = MultimodalNoteGenerator(
+        jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+    )
+
+    # 传递图片基础路径，确保相对路径计算正确
+    generator.export_to_markdown(
+        notes_json_path=str(notes_file),
+        output_path=str(markdown_file),
+        image_base_path=str(task_dir)
+    )
+
+    return FileResponse(
+        path=str(markdown_file),
+        media_type="text/markdown"
+    )
+
+@app.put("/api/notes/{task_id}")
+async def save_notes(task_id: str, content: dict):
+    """保存用户编辑的笔记内容"""
+    try:
+        metadata = task_manager.load_metadata(task_id)
+    except:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if metadata["status"] != "completed":
+        raise HTTPException(status_code=400, detail="任务尚未完成")
+
+    if "content" not in content:
+        raise HTTPException(status_code=400, detail="缺少 content 字段")
+
+    task_dir = task_manager.get_task_dir(task_id)
+    markdown_file = task_dir / "notes.md"
+
+    # 保存用户编辑的内容
+    try:
+        with open(markdown_file, "w", encoding="utf-8") as f:
+            f.write(content["content"])
+
+        return {"message": "笔记保存成功", "task_id": task_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存失败: {str(e)}")
+
+@app.get("/api/export/{task_id}/pdf")
+async def export_pdf(task_id: str):
+    """导出 PDF 格式笔记（包含嵌入图片）"""
+    try:
+        metadata = task_manager.load_metadata(task_id)
+    except:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if metadata["status"] != "completed":
+        raise HTTPException(status_code=400, detail="任务尚未完成")
+
+    task_dir = task_manager.get_task_dir(task_id)
+    markdown_file = task_dir / "notes.md"
+
+    # 确保 markdown 文件存在
+    if not markdown_file.exists():
+        # 如果不存在，先生成一个
+        notes_file = task_dir / "multimodal_notes" / "multimodal_notes.json"
+        if not notes_file.exists():
+            notes_file = task_dir / "multimodal_notes.json"
+
+        if not notes_file.exists():
+            raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+        generator = MultimodalNoteGenerator(
+            jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+        )
+        generator.export_to_markdown(
+            notes_json_path=str(notes_file),
+            output_path=str(markdown_file),
+            image_base_path=str(task_dir)
+        )
+
+    # 读取 markdown 内容
+    with open(markdown_file, "r", encoding="utf-8") as f:
+        markdown_content = f.read()
+
+    # 将图片路径转换为 base64 嵌入
+    def embed_images(content: str) -> str:
+        # 匹配 markdown 图片语法: ![alt](path)
+        def replace_image(match):
+            alt_text = match.group(1)
+            image_path = match.group(2)
+
+            # 如果是相对路径，转换为绝对路径
+            if not image_path.startswith('/') and not image_path.startswith('http'):
+                full_path = task_dir / image_path
+            elif image_path.startswith('/storage/'):
+                # 移除 /storage/ 前缀，因为我们的存储目录就是 storage
+                relative_path = image_path[9:]  # 移除 '/storage/'
+                full_path = Path("storage") / relative_path
+            else:
+                return match.group(0)  # 保持原样
+
+            try:
+                if full_path.exists():
+                    with open(full_path, "rb") as img_file:
+                        img_data = base64.b64encode(img_file.read()).decode()
+                        # 获取文件扩展名来确定 MIME 类型
+                        ext = full_path.suffix.lower()
+                        mime_type = "image/jpeg" if ext in ['.jpg', '.jpeg'] else f"image/{ext[1:]}"
+                        return f'<img src="data:{mime_type};base64,{img_data}" alt="{alt_text}" style="max-width: 100%; height: auto;">'
+                else:
+                    return f'<p><em>图片未找到: {image_path}</em></p>'
+            except Exception:
+                return f'<p><em>图片加载失败: {image_path}</em></p>'
+
+        # 替换所有图片
+        pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+        return re.sub(pattern, replace_image, content)
+
+    # 嵌入图片
+    content_with_images = embed_images(markdown_content)
+
+    # 转换为 HTML
+    html_content = markdown.markdown(content_with_images, extensions=['tables', 'fenced_code'])
+
+    # 创建完整的 HTML 文档
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>视频笔记 - {task_id}</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; margin: 40px; }}
+            h1, h2, h3 {{ color: #333; }}
+            img {{ max-width: 100%; height: auto; margin: 10px 0; }}
+            table {{ border-collapse: collapse; width: 100%; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #f2f2f2; }}
+            code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
+            pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    # 保存 HTML 文件
+    html_file = task_dir / "notes.html"
+    with open(html_file, "w", encoding="utf-8") as f:
+        f.write(full_html)
+
+    # 返回 HTML 文件（浏览器可以打印为 PDF）
+    return FileResponse(
+        path=str(html_file),
+        filename=f"video_notes_{task_id}.html",
+        media_type="text/html"
     )
 
 

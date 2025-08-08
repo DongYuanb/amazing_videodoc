@@ -9,6 +9,7 @@ scipy>=1.7.0              # 用于高级数学计算（可选）
 
 # 图文混排笔记功能依赖
 reportlab>=3.6.0          # 用于PDF生成
+markdown>=3.4.0           # 用于Markdown转HTML
 
 # 可选：用于更高级的视频处理
 # opencv-python>=4.5.0
