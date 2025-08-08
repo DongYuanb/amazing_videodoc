@@ -14,3 +14,5 @@
 ./stroage
 *.jpg
 *.log
+video_processing.log
+storage/

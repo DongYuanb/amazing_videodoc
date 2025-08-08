@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Optional, Dict
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from task_logger import TaskLogger, create_task_logger, close_task_logger
 from dotenv import load_dotenv
@@ -262,7 +263,6 @@ class VideoProcessingWorkflow:
         except Exception as e:
             self.logger.error(f"❌ 处理失败: {e}")
             raise
-
 # ==================== FastAPI 应用 ====================
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -270,6 +270,18 @@ app = FastAPI(
     description="视频转录、摘要和图文笔记生成服务",
     version="1.0.0"
 )
+
+# 允许CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 在创建 app 之后挂载静态文件目录
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 app.add_middleware(
     CORSMiddleware,
@@ -306,6 +318,24 @@ async def upload_video(file: UploadFile = File(...)):
         "task_id": task_id,
         "filename": file.filename,
         "message": "文件上传成功"
+    }
+
+@app.get("/api/static-info/{task_id}")
+async def static_info(task_id: str):
+    """
+    返回前端静态资源的路径信息，前端可直接拼接访问：
+    - 视频: /storage/tasks/{task_id}/original_video.mp4
+    - 笔记JSON: /storage/tasks/{task_id}/multimodal_notes.json 或 /storage/tasks/{task_id}/multimodal_notes/multimodal_notes.json
+    - 关键帧: /storage/tasks/{task_id}/multimodal_notes/frames/segment_xxx/unique_frame_xxx.jpg
+    """
+
+    return {
+        "video": f"/storage/tasks/{task_id}/original_video.mp4",
+        "notes_json": [
+            f"/storage/tasks/{task_id}/multimodal_notes.json",
+            f"/storage/tasks/{task_id}/multimodal_notes/multimodal_notes.json"
+        ],
+        "frames_base": f"/storage/tasks/{task_id}/multimodal_notes/frames"
     }
 
 @app.post("/api/process/{task_id}")
@@ -365,8 +395,13 @@ async def get_results(task_id: str):
 
     for key, filename in result_files.items():
         file_path = task_dir / filename
-        if file_path.exists():
-            with open(file_path, "r", encoding="utf-8") as f:
+        alt_path = None
+        # 针对 multimodal_notes，优先兼容嵌套目录 storage/tasks/{id}/multimodal_notes/multimodal_notes.json
+        if key == "multimodal_notes" and not file_path.exists():
+            alt_path = task_dir / "multimodal_notes" / "multimodal_notes.json"
+        target_path = file_path if file_path.exists() else alt_path
+        if target_path and target_path.exists():
+            with open(target_path, "r", encoding="utf-8") as f:
                 results[key] = json.load(f)
 
     return {
