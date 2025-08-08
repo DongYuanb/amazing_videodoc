@@ -14,6 +14,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from task_logger import TaskLogger, create_task_logger, close_task_logger
 from dotenv import load_dotenv
 
 from asr_tencent.text_merge import TextMerger
@@ -78,6 +79,11 @@ class TaskManager:
         }
 
         self.save_metadata(task_id, metadata)
+
+        # 创建任务专用logger
+        task_logger = create_task_logger(task_id, str(task_dir))
+        task_logger.info(f"任务创建成功 - 原始文件名: {original_filename}")
+
         return task_id
 
     def get_task_dir(self, task_id: str) -> Path:
@@ -116,11 +122,20 @@ class TaskManager:
 
         self.save_metadata(task_id, metadata)
 
+        # 记录状态更新到任务日志
+        if task_id in TaskLogger._loggers:
+            task_logger = TaskLogger._loggers[task_id]
+            if error_message:
+                task_logger.error(f"任务状态更新: {status} - {error_message}")
+            else:
+                task_logger.info(f"任务状态更新: {status} - {current_step or ''} ({progress or 0:.1%})")
+
 class VideoProcessingWorkflow:
     """视频处理工作流程"""
 
-    def __init__(self, enable_multimodal: bool = True):
+    def __init__(self, enable_multimodal: bool = True, task_logger: logging.Logger = None):
         self.enable_multimodal = enable_multimodal
+        self.logger = task_logger or logger  # 使用任务logger或全局logger
         self._init_services()
 
     def _init_services(self):
@@ -166,8 +181,8 @@ class VideoProcessingWorkflow:
         """处理视频的完整流程"""
         os.makedirs(output_dir, exist_ok=True)
 
-        logger.info(f"开始处理视频: {video_path}")
-        logger.info(f"输出目录: {output_dir}")
+        self.logger.info(f"开始处理视频: {video_path}")
+        self.logger.info(f"输出目录: {output_dir}")
 
         # 定义文件路径
         audio_path = os.path.join(output_dir, "audio.wav")
@@ -178,13 +193,13 @@ class VideoProcessingWorkflow:
 
         try:
             # 1. 提取音频
-            logger.info("1️⃣ 提取音频...")
+            self.logger.info("1️⃣ 提取音频...")
             if progress_callback:
                 progress_callback("audio_extract", 0.1)
             extract_audio_for_asr(video_path, audio_path)
 
             # 2. ASR转录
-            logger.info("2️⃣ ASR转录...")
+            self.logger.info("2️⃣ ASR转录...")
             if progress_callback:
                 progress_callback("asr", 0.2)
                 self.asr_service.transcribe_audio_with_progress(audio_path, asr_json, progress_callback)
@@ -192,7 +207,7 @@ class VideoProcessingWorkflow:
                 self.asr_service.transcribe_audio(audio_path, asr_json)
 
             # 3. 文本合并
-            logger.info("3️⃣ 文本合并...")
+            self.logger.info("3️⃣ 文本合并...")
             if progress_callback:
                 progress_callback("text_merge", 0.6)
                 success = self.text_merger.process_file_with_progress(asr_json, merged_json, progress_callback)
@@ -202,7 +217,7 @@ class VideoProcessingWorkflow:
                 raise RuntimeError("文本合并失败")
 
             # 4. 生成摘要
-            logger.info("4️⃣ 生成摘要...")
+            self.logger.info("4️⃣ 生成摘要...")
             if progress_callback:
                 progress_callback("summary", 0.8)
                 success = self.summary_generator.process_file_with_progress(merged_json, summary_json, progress_callback)
@@ -213,7 +228,7 @@ class VideoProcessingWorkflow:
 
             # 5. 生成图文笔记（可选）
             if self.enable_multimodal and self.multimodal_generator:
-                logger.info("5️⃣ 生成图文笔记...")
+                self.logger.info("5️⃣ 生成图文笔记...")
                 if progress_callback:
                     progress_callback("multimodal", 0.9)
                 notes_dir = os.path.join(output_dir, "multimodal_notes")
@@ -227,14 +242,14 @@ class VideoProcessingWorkflow:
             if not keep_temp:
                 try:
                     os.unlink(audio_path)
-                    logger.info("清理临时音频文件")
+                    self.logger.info("清理临时音频文件")
                 except:
                     pass
 
             if progress_callback:
                 progress_callback("completed", 1.0)
 
-            logger.info("✅ 处理完成！")
+            self.logger.info("✅ 处理完成！")
             return {
                 "video_path": video_path,
                 "output_dir": output_dir,
@@ -245,7 +260,7 @@ class VideoProcessingWorkflow:
             }
 
         except Exception as e:
-            logger.error(f"❌ 处理失败: {e}")
+            self.logger.error(f"❌ 处理失败: {e}")
             raise
 
 # ==================== FastAPI 应用 ====================
@@ -432,16 +447,20 @@ task_manager = TaskManager()
 
 async def process_video_background(task_id: str, enable_multimodal: bool, keep_temp: bool):
     """后台处理视频的函数"""
+    task_logger = None
     try:
         task_dir = task_manager.get_task_dir(task_id)
         video_path = task_dir / "original_video.mp4"
 
-        # 创建工作流实例
-        workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal)
+        # 获取任务专用logger
+        task_logger = TaskLogger.get_logger(task_id, str(task_dir))
+
+        # 创建工作流实例（传入任务logger）
+        workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal, task_logger=task_logger)
 
         # 更新进度回调
         def update_progress(step: str, progress: float):
-            logger.info(f"🔄 进度更新: {step} - {progress:.1%}")
+            task_logger.info(f"🔄 进度更新: {step} - {progress:.1%}")
             task_manager.update_status(task_id, "processing", step, progress)
 
         # 执行处理
@@ -453,11 +472,20 @@ async def process_video_background(task_id: str, enable_multimodal: bool, keep_t
         )
 
         # 处理完成
+        task_logger.info("🎉 任务处理完成！")
+        task_logger.info(f"处理结果: {result}")
         task_manager.update_status(task_id, "completed", "finished", 1.0)
 
     except Exception as e:
         # 处理失败
+        if task_logger:
+            task_logger.error(f"❌ 任务处理失败: {e}")
         task_manager.update_status(task_id, "failed", error_message=str(e))
+
+    finally:
+        pass
+        # 任务完成后关闭logger（可选，也可以保留用于查看日志）
+        # close_task_logger(task_id)
 
 # 启动服务器的代码
 if __name__ == "__main__":

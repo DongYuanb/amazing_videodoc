@@ -4,6 +4,7 @@ import tempfile
 import base64
 import json
 import time
+import logging
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
 import cohere
@@ -21,7 +22,8 @@ class VideoFrameDeduplicator:
                  ffmpeg_path: str = "ffmpeg",
                  similarity_threshold: float = 0.9,
                  api_timeout: int = 30,
-                 image_preprocessor: Optional[ImagePreprocessor] = None):
+                 image_preprocessor: Optional[ImagePreprocessor] = None,
+                 logger: Optional[logging.Logger] = None):
         """
         初始化去重处理器
 
@@ -31,6 +33,7 @@ class VideoFrameDeduplicator:
             similarity_threshold: 相似度阈值，超过此值认为是重复图片
             api_timeout: API请求超时时间（秒）
             image_preprocessor: 图片预处理器，用于裁剪等操作
+            logger: 日志记录器
         """
         self.jina_api_key = jina_api_key
         self.ffmpeg_path = ffmpeg_path
@@ -38,6 +41,7 @@ class VideoFrameDeduplicator:
         self.api_timeout = api_timeout
         self.cohere_client = cohere.ClientV2(api_key=jina_api_key)
         self.image_preprocessor = image_preprocessor
+        self.logger = logger or logging.getLogger(__name__)
 
     def extract_frames(self, 
                       video_path: str, 
@@ -86,7 +90,7 @@ class VideoFrameDeduplicator:
         
         try:
             result = subprocess.run(cmd, capture_output=True, check=True, text=True)
-            print(f"Frame extraction completed. Output: {output_dir}")
+            self.logger.info(f"Frame extraction completed. Output: {output_dir}")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"ffmpeg failed: {e.stderr}")
         
@@ -99,7 +103,7 @@ class VideoFrameDeduplicator:
         if not frame_files:
             raise RuntimeError("No frames were extracted")
         
-        print(f"Extracted {len(frame_files)} frames")
+        self.logger.info(f"Extracted {len(frame_files)} frames")
         return frame_files
     
     def _image_to_base64(self, image_path: str) -> str:
@@ -121,14 +125,15 @@ class VideoFrameDeduplicator:
 
             return f"data:{content_type};base64,{image_data}"
     
-    def get_batch_embeddings(self, image_paths: List[str], batch_size: int = 10) -> List[np.ndarray]:
+    def get_batch_embeddings(self, image_paths: List[str], batch_size: int = 10, embedding_lock: Optional[object] = None) -> List[np.ndarray]:
         """
         批量获取图片embeddings
         
         Args:
             image_paths: 图片路径列表
             batch_size: 批处理大小
-            
+            embedding_lock: 用于保护API调用的锁
+
         Returns:
             embeddings向量列表
         """
@@ -136,7 +141,7 @@ class VideoFrameDeduplicator:
         
         for i in range(0, len(image_paths), batch_size):
             batch_paths = image_paths[i:i + batch_size]
-            print(f"Processing batch {i//batch_size + 1}/{(len(image_paths) + batch_size - 1)//batch_size}")
+            self.logger.info(f"Processing batch {i//batch_size + 1}/{(len(image_paths) + batch_size - 1)//batch_size}")
             
             # 准备API请求数据
             input_data = []
@@ -152,22 +157,27 @@ class VideoFrameDeduplicator:
                         ]
                     })
                 except Exception as e:
-                    print(f"Warning: Failed to process image {path}: {e}")
+                    self.logger.warning(f"Failed to process image {path}: {e}")
                     continue
             
             if not input_data:
                 continue
             
-            # 调用Cohere API
+            # 调用Cohere API（使用锁保护）
             try:
-                embeddings = self._call_cohere_api(input_data)
+                if embedding_lock:
+                    with embedding_lock:
+                        embeddings = self._call_cohere_api(input_data)
+                        # 在锁内添加延迟避免API限制
+                        time.sleep(0.1)
+                else:
+                    embeddings = self._call_cohere_api(input_data)
+                    time.sleep(0.1)
+
                 all_embeddings.extend(embeddings)
 
-                # 添加延迟避免API限制
-                time.sleep(0.1)
-
             except Exception as e:
-                print(f"Warning: API call failed for batch: {e}")
+                self.logger.warning(f"API call failed for batch: {e}")
                 continue
         
         return all_embeddings
@@ -232,7 +242,7 @@ class VideoFrameDeduplicator:
                 similarity = self.calculate_cosine_similarity(current_embedding, processed_embedding)
                 if similarity > self.similarity_threshold:
                     is_duplicate = True
-                    print(f"Found duplicate: {image_paths[i]} (similarity: {similarity:.3f})")
+                    self.logger.debug(f"Found duplicate: {image_paths[i]} (similarity: {similarity:.3f})")
                     break
             
             if not is_duplicate:
@@ -240,9 +250,9 @@ class VideoFrameDeduplicator:
                 processed_embeddings.append(current_embedding)
         
         unique_paths = [image_paths[i] for i in unique_indices]
-        print(f"Removed {len(image_paths) - len(unique_paths)} duplicate images")
-        print(f"Remaining unique images: {len(unique_paths)}")
-        
+        self.logger.info(f"Removed {len(image_paths) - len(unique_paths)} duplicate images")
+        self.logger.info(f"Remaining unique images: {len(unique_paths)}")
+
         return unique_paths
 
     def save_unique_frames(self,
@@ -275,9 +285,9 @@ class VideoFrameDeduplicator:
                     shutil.move(src_path, dst_path)
                 saved_paths.append(dst_path)
             except Exception as e:
-                print(f"Warning: Failed to save {src_path}: {e}")
+                self.logger.warning(f"Failed to save {src_path}: {e}")
 
-        print(f"Saved {len(saved_paths)} unique frames to {output_dir}")
+        self.logger.info(f"Saved {len(saved_paths)} unique frames to {output_dir}")
         return saved_paths
 
     def process_video_frames(self,
@@ -287,7 +297,8 @@ class VideoFrameDeduplicator:
                            output_dir: str,
                            fps: float = 1.0,
                            temp_dir: Optional[str] = None,
-                           keep_temp_files: bool = False) -> Dict[str, Any]:
+                           keep_temp_files: bool = False,
+                           embedding_lock: Optional[object] = None) -> Dict[str, Any]:
         """
         完整的视频帧去重处理流程
 
@@ -299,15 +310,16 @@ class VideoFrameDeduplicator:
             fps: 抽帧频率
             temp_dir: 临时目录，如果为None则自动创建
             keep_temp_files: 是否保留临时文件
+            embedding_lock: 用于保护embedding API调用的锁（并发控制）
 
         Returns:
             处理结果字典，包含统计信息和文件路径
         """
-        print(f"Starting video frame deduplication process...")
-        print(f"Video: {video_path}")
-        print(f"Time range: {start_time}s - {end_time}s")
-        print(f"FPS: {fps}")
-        print(f"Similarity threshold: {self.similarity_threshold}")
+        self.logger.info(f"Starting video frame deduplication process...")
+        self.logger.info(f"Video: {video_path}")
+        self.logger.info(f"Time range: {start_time}s - {end_time}s")
+        self.logger.info(f"FPS: {fps}")
+        self.logger.info(f"Similarity threshold: {self.similarity_threshold}")
 
         # 创建临时目录
         if temp_dir is None:
@@ -319,37 +331,37 @@ class VideoFrameDeduplicator:
 
         try:
             # 1. 抽取帧
-            print("\n1. Extracting frames...")
+            self.logger.info("1. Extracting frames...")
             frame_paths = self.extract_frames(video_path, start_time, end_time, fps, temp_dir)
 
             # 2. 预处理图片（裁剪等）
-            print("\n2. Preprocessing images...")
+            self.logger.info("2. Preprocessing images...")
             # 仅当提供了图片预处理器时才进行预处理
             if isinstance(self.image_preprocessor, ImagePreprocessor):
                 preprocessed_dir = os.path.join(temp_dir, "preprocessed")
                 preprocessed_paths = self.image_preprocessor.process_images(frame_paths, preprocessed_dir)
-                print(f"Preprocessed {len(preprocessed_paths)} images")
+                self.logger.info(f"Preprocessed {len(preprocessed_paths)} images")
             else:
                 preprocessed_paths = frame_paths
-                print("No preprocessing applied")
+                self.logger.info("No preprocessing applied")
 
             # 3. 获取embeddings
-            print("\n3. Getting embeddings...")
-            embeddings = self.get_batch_embeddings(preprocessed_paths)
+            self.logger.info("3. Getting embeddings...")
+            embeddings = self.get_batch_embeddings(preprocessed_paths, embedding_lock=embedding_lock)
 
             if len(embeddings) != len(preprocessed_paths):
-                print(f"Warning: Got {len(embeddings)} embeddings for {len(preprocessed_paths)} frames")
+                self.logger.warning(f"Got {len(embeddings)} embeddings for {len(preprocessed_paths)} frames")
                 # 只处理成功获取embedding的图片
                 min_len = min(len(embeddings), len(preprocessed_paths))
                 preprocessed_paths = preprocessed_paths[:min_len]
                 embeddings = embeddings[:min_len]
 
             # 4. 去除重复
-            print("\n4. Removing duplicates...")
+            self.logger.info("4. Removing duplicates...")
             unique_paths = self.remove_duplicates(preprocessed_paths, embeddings)
 
             # 5. 保存结果
-            print("\n5. Saving unique frames...")
+            self.logger.info("5. Saving unique frames...")
             saved_paths = self.save_unique_frames(unique_paths, output_dir)
 
             # 统计信息
@@ -367,13 +379,13 @@ class VideoFrameDeduplicator:
                 "saved_paths": saved_paths
             }
 
-            print(f"\n✅ Process completed successfully!")
-            print(f"Total frames extracted: {result['total_frames']}")
+            self.logger.info("✅ Process completed successfully!")
+            self.logger.info(f"Total frames extracted: {result['total_frames']}")
             if result['preprocessing_applied']:
-                print(f"Frames after preprocessing: {result['preprocessed_frames']}")
-            print(f"Unique frames saved: {result['unique_frames']}")
-            print(f"Duplicates removed: {result['duplicates_removed']}")
-            print(f"Output directory: {output_dir}")
+                self.logger.info(f"Frames after preprocessing: {result['preprocessed_frames']}")
+            self.logger.info(f"Unique frames saved: {result['unique_frames']}")
+            self.logger.info(f"Duplicates removed: {result['duplicates_removed']}")
+            self.logger.info(f"Output directory: {output_dir}")
 
             return result
 
@@ -382,9 +394,9 @@ class VideoFrameDeduplicator:
             if temp_created and not keep_temp_files:
                 try:
                     shutil.rmtree(temp_dir)
-                    print(f"Cleaned up temporary directory: {temp_dir}")
+                    self.logger.info(f"Cleaned up temporary directory: {temp_dir}")
                 except Exception as e:
-                    print(f"Warning: Failed to clean up temp directory: {e}")
+                    self.logger.warning(f"Failed to clean up temp directory: {e}")
 
 
 def create_deduplicator(jina_api_key: str, **kwargs) -> VideoFrameDeduplicator:
