@@ -21,3 +21,158 @@
 2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr - 20.0%
 2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr_start - 0.0%
 2025-08-07 22:57:07,705 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
+2025-08-08 18:06:30,486 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-08 18:06:30,486 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-08 18:06:30,486 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-08 18:06:30,486 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-08 18:06:30,486 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-08 18:10:10,608 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-08 18:10:10,608 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-08 18:10:10,608 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-08 18:10:10,608 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-08 18:10:10,608 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-08 18:10:25,393 - main - INFO - 开始处理视频: storage/tasks/22012def-8c25-4da0-b9c7-cc9f008ab990/original_video.mp4
+2025-08-08 18:10:25,393 - main - INFO - 输出目录: storage/tasks/22012def-8c25-4da0-b9c7-cc9f008ab990
+2025-08-08 18:10:25,393 - main - INFO - 1️⃣ 提取音频...
+2025-08-08 18:10:25,393 - main - INFO - 🔄 进度更新: audio_extract - 10.0%
+2025-08-08 18:10:27,085 - main - INFO - 2️⃣ ASR转录...
+2025-08-08 18:10:27,085 - main - INFO - 🔄 进度更新: asr - 20.0%
+2025-08-08 18:10:27,085 - main - INFO - 🔄 进度更新: asr_start - 0.0%
+2025-08-08 18:10:27,085 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
+2025-08-08 18:10:35,930 - main - INFO - 🔄 进度更新: asr_complete - 100.0%
+2025-08-08 18:10:35,931 - main - INFO - 3️⃣ 文本合并...
+2025-08-08 18:10:35,931 - main - INFO - 🔄 进度更新: text_merge - 60.0%
+2025-08-08 18:10:35,931 - main - INFO - 🔄 进度更新: text_merge_start - 0.0%
+2025-08-08 18:10:35,932 - main - INFO - 🔄 进度更新: text_merge_processing - 50.0%
+2025-08-08 18:10:37,287 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:37,294 - main - INFO - 🔄 进度更新: text_merge_complete - 100.0%
+2025-08-08 18:10:37,295 - main - INFO - 4️⃣ 生成摘要...
+2025-08-08 18:10:37,295 - main - INFO - 🔄 进度更新: summary - 80.0%
+2025-08-08 18:10:37,299 - main - INFO - 🔄 进度更新: summary_start - 0.0%
+2025-08-08 18:10:37,305 - main - INFO - 🔄 进度更新: summary_processing - 50.0%
+2025-08-08 18:10:37,890 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:38,155 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:38,408 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:38,740 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:38,987 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:39,229 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:10:39,239 - main - INFO - 🔄 进度更新: summary_complete - 100.0%
+2025-08-08 18:10:39,281 - main - INFO - 5️⃣ 生成图文笔记...
+2025-08-08 18:10:39,281 - main - INFO - 🔄 进度更新: multimodal - 90.0%
+2025-08-08 18:10:41,520 - main - INFO - 清理临时音频文件
+2025-08-08 18:10:41,520 - main - INFO - 🔄 进度更新: completed - 100.0%
+2025-08-08 18:10:41,520 - main - INFO - ✅ 处理完成！
+2025-08-08 18:12:55,392 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-08 18:12:55,392 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-08 18:12:55,392 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-08 18:12:55,392 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-08 18:12:55,392 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-08 18:13:17,439 - main - INFO - 开始处理视频: storage/tasks/07019267-c840-49be-9606-db644313669f/original_video.mp4
+2025-08-08 18:13:17,440 - main - INFO - 输出目录: storage/tasks/07019267-c840-49be-9606-db644313669f
+2025-08-08 18:13:17,440 - main - INFO - 1️⃣ 提取音频...
+2025-08-08 18:13:17,440 - main - INFO - 🔄 进度更新: audio_extract - 10.0%
+2025-08-08 18:13:17,661 - main - INFO - 2️⃣ ASR转录...
+2025-08-08 18:13:17,661 - main - INFO - 🔄 进度更新: asr - 20.0%
+2025-08-08 18:13:17,662 - main - INFO - 🔄 进度更新: asr_start - 0.0%
+2025-08-08 18:13:17,662 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
+2025-08-08 18:13:24,797 - main - INFO - 🔄 进度更新: asr_complete - 100.0%
+2025-08-08 18:13:24,797 - main - INFO - 3️⃣ 文本合并...
+2025-08-08 18:13:24,797 - main - INFO - 🔄 进度更新: text_merge - 60.0%
+2025-08-08 18:13:24,798 - main - INFO - 🔄 进度更新: text_merge_start - 0.0%
+2025-08-08 18:13:24,798 - main - INFO - 🔄 进度更新: text_merge_processing - 50.0%
+2025-08-08 18:13:26,014 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:26,015 - main - INFO - 🔄 进度更新: text_merge_complete - 100.0%
+2025-08-08 18:13:26,016 - main - INFO - 4️⃣ 生成摘要...
+2025-08-08 18:13:26,016 - main - INFO - 🔄 进度更新: summary - 80.0%
+2025-08-08 18:13:26,016 - main - INFO - 🔄 进度更新: summary_start - 0.0%
+2025-08-08 18:13:26,016 - main - INFO - 🔄 进度更新: summary_processing - 50.0%
+2025-08-08 18:13:26,819 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:27,205 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:27,438 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:27,872 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:28,356 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:28,903 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-08 18:13:28,907 - main - INFO - 🔄 进度更新: summary_complete - 100.0%
+2025-08-08 18:13:28,908 - main - INFO - 5️⃣ 生成图文笔记...
+2025-08-08 18:13:28,908 - main - INFO - 🔄 进度更新: multimodal - 90.0%
+2025-08-08 18:13:30,973 - main - INFO - 清理临时音频文件
+2025-08-08 18:13:30,973 - main - INFO - 🔄 进度更新: completed - 100.0%
+2025-08-08 18:13:30,973 - main - INFO - ✅ 处理完成！
+2025-08-08 18:15:14,110 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-08 18:15:14,110 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-08 18:15:14,110 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-08 18:15:14,110 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-08 18:15:14,110 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-08 18:15:25,833 - main - INFO - 开始处理视频: storage/tasks/e403f60e-0f88-4c27-9139-bb89c1a5aa92/original_video.mp4
+2025-08-08 18:15:25,834 - main - INFO - 输出目录: storage/tasks/e403f60e-0f88-4c27-9139-bb89c1a5aa92
+2025-08-08 18:15:25,834 - main - INFO - 1️⃣ 提取音频...
+2025-08-08 18:15:25,834 - main - INFO - 🔄 进度更新: audio_extract - 10.0%
+2025-08-08 18:15:26,059 - main - INFO - 2️⃣ ASR转录...
+2025-08-08 18:15:26,059 - main - INFO - 🔄 进度更新: asr - 20.0%
+2025-08-08 18:15:26,060 - main - INFO - 🔄 进度更新: asr_start - 0.0%
+2025-08-08 18:15:26,060 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
+2025-08-08 18:15:34,564 - main - INFO - 🔄 进度更新: asr_complete - 100.0%
+2025-08-08 18:15:34,565 - main - INFO - 3️⃣ 文本合并...
+2025-08-08 18:15:34,565 - main - INFO - 🔄 进度更新: text_merge - 60.0%
+2025-08-08 18:15:34,565 - main - INFO - 🔄 进度更新: text_merge_start - 0.0%
+2025-08-08 18:15:34,565 - main - INFO - 🔄 进度更新: text_merge_processing - 50.0%
+2025-08-08 18:15:39,682 - openai._base_client - INFO - Retrying request to /chat/completions in 0.422870 seconds
+2025-08-08 18:15:45,113 - openai._base_client - INFO - Retrying request to /chat/completions in 0.977579 seconds
+2025-08-08 18:15:48,072 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:15:51,369 - main - INFO - 🔄 进度更新: text_merge_complete - 100.0%
+2025-08-08 18:15:51,370 - main - INFO - 4️⃣ 生成摘要...
+2025-08-08 18:15:51,370 - main - INFO - 🔄 进度更新: summary - 80.0%
+2025-08-08 18:15:51,370 - main - INFO - 🔄 进度更新: summary_start - 0.0%
+2025-08-08 18:15:51,371 - main - INFO - 🔄 进度更新: summary_processing - 50.0%
+2025-08-08 18:15:53,232 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:15:56,355 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:15:59,544 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:16:02,023 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:16:05,141 - main - INFO - 🔄 进度更新: summary_complete - 100.0%
+2025-08-08 18:16:05,142 - main - INFO - 5️⃣ 生成图文笔记...
+2025-08-08 18:16:05,142 - main - INFO - 🔄 进度更新: multimodal - 90.0%
+2025-08-08 18:16:06,919 - main - INFO - 清理临时音频文件
+2025-08-08 18:16:06,919 - main - INFO - 🔄 进度更新: completed - 100.0%
+2025-08-08 18:16:06,919 - main - INFO - ✅ 处理完成！
+2025-08-08 18:31:44,016 - __main__ - INFO - 🚀 启动视频处理 API 服务...
+2025-08-08 18:31:44,016 - __main__ - INFO - 📁 存储目录: /Users/musk/Documents/code/amazing_videodoc/storage
+2025-08-08 18:31:44,016 - __main__ - INFO - 🌐 API 文档: http://localhost:8000/docs
+2025-08-08 18:31:44,016 - __main__ - INFO - 🔍 健康检查: http://localhost:8000/api/health
+2025-08-08 18:31:44,016 - __main__ - INFO - 📤 上传接口: http://localhost:8000/api/upload
+2025-08-08 18:32:09,819 - main - INFO - 开始处理视频: storage/tasks/fe06ad11-11a3-4272-b5df-cddc381956ba/original_video.mp4
+2025-08-08 18:32:09,820 - main - INFO - 输出目录: storage/tasks/fe06ad11-11a3-4272-b5df-cddc381956ba
+2025-08-08 18:32:09,820 - main - INFO - 1️⃣ 提取音频...
+2025-08-08 18:32:09,820 - main - INFO - 🔄 进度更新: audio_extract - 10.0%
+2025-08-08 18:32:10,051 - main - INFO - 2️⃣ ASR转录...
+2025-08-08 18:32:10,051 - main - INFO - 🔄 进度更新: asr - 20.0%
+2025-08-08 18:32:10,051 - main - INFO - 🔄 进度更新: asr_start - 0.0%
+2025-08-08 18:32:10,051 - main - INFO - 🔄 进度更新: asr_processing - 50.0%
+2025-08-08 18:32:18,518 - main - INFO - 🔄 进度更新: asr_complete - 100.0%
+2025-08-08 18:32:18,519 - main - INFO - 3️⃣ 文本合并...
+2025-08-08 18:32:18,519 - main - INFO - 🔄 进度更新: text_merge - 60.0%
+2025-08-08 18:32:18,520 - main - INFO - 🔄 进度更新: text_merge_start - 0.0%
+2025-08-08 18:32:18,521 - main - INFO - 🔄 进度更新: text_merge_processing - 50.0%
+2025-08-08 18:32:20,835 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:32:29,395 - main - INFO - 🔄 进度更新: text_merge_complete - 100.0%
+2025-08-08 18:32:29,396 - main - INFO - 4️⃣ 生成摘要...
+2025-08-08 18:32:29,396 - main - INFO - 🔄 进度更新: summary - 80.0%
+2025-08-08 18:32:29,396 - main - INFO - 🔄 进度更新: summary_start - 0.0%
+2025-08-08 18:32:29,396 - main - INFO - 🔄 进度更新: summary_processing - 50.0%
+2025-08-08 18:32:31,499 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:32:34,950 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:32:38,285 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2025-08-08 18:32:40,512 - main - INFO - 🔄 进度更新: summary_complete - 100.0%
+2025-08-08 18:32:40,513 - main - INFO - 5️⃣ 生成图文笔记...
+2025-08-08 18:32:40,513 - main - INFO - 🔄 进度更新: multimodal - 90.0%
+2025-08-08 18:32:45,774 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:32:49,407 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:32:51,789 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:32:55,988 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:32:59,648 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:33:02,899 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:33:08,509 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:33:13,810 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:33:15,251 - httpx - INFO - HTTP Request: POST https://api.cohere.com/v2/embed "HTTP/1.1 200 OK"
+2025-08-08 18:33:15,369 - main - INFO - 清理临时音频文件
+2025-08-08 18:33:15,370 - main - INFO - 🔄 进度更新: completed - 100.0%
+2025-08-08 18:33:15,371 - main - INFO - ✅ 处理完成！

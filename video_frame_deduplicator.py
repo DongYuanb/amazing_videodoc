@@ -324,7 +324,8 @@ class VideoFrameDeduplicator:
 
             # 2. 预处理图片（裁剪等）
             print("\n2. Preprocessing images...")
-            if not isinstance(self.image_preprocessor):
+            # 仅当提供了图片预处理器时才进行预处理
+            if isinstance(self.image_preprocessor, ImagePreprocessor):
                 preprocessed_dir = os.path.join(temp_dir, "preprocessed")
                 preprocessed_paths = self.image_preprocessor.process_images(frame_paths, preprocessed_dir)
                 print(f"Preprocessed {len(preprocessed_paths)} images")
@@ -361,7 +362,7 @@ class VideoFrameDeduplicator:
                 "unique_frames": len(saved_paths),
                 "duplicates_removed": len(preprocessed_paths) - len(saved_paths),
                 "similarity_threshold": self.similarity_threshold,
-                "preprocessing_applied": not isinstance(self.image_preprocessor),
+                "preprocessing_applied": isinstance(self.image_preprocessor, ImagePreprocessor),
                 "output_dir": output_dir,
                 "saved_paths": saved_paths
             }

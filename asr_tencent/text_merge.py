@@ -135,7 +135,7 @@ class TextMerger:
         }
 
 if __name__=="__main__":
-    merger=TextMerger("openrouter/horizon-beta")
+    merger=TextMerger("openai/gpt-oss-20b:free")
     if merger.process_file("result_sentences.json","merged_result.json"):
         print("处理完成")
     else:print("处理失败")

@@ -207,7 +207,7 @@ class Summarizer:
 if __name__ == "__main__":
     INPUT_FILE = "2.json"    # 输入文件
     OUTPUT_FILE = "3.json"  # 输出文件
-    MODEL_ID = "openrouter/horizon-beta"  # 模型ID（与OpenAI调用示例一致）
+    MODEL_ID = "openai/gpt-oss-20b:free"  # 模型ID（与OpenAI调用示例一致）
     
     try:
         summarizer = Summarizer(MODEL_ID)

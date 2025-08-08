@@ -12,6 +12,7 @@ from typing import Optional, Dict
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -124,7 +125,7 @@ class VideoProcessingWorkflow:
 
     def _init_services(self):
         """初始化所有服务"""
-        model_id = os.getenv("MODEL_ID", "openrouter/horizon-beta")
+        model_id = os.getenv("MODEL_ID", "openai/gpt-oss-20b:free")
 
         # 核心服务
         self.text_merger = TextMerger(model_id)
@@ -253,6 +254,14 @@ app = FastAPI(
     title="视频处理 API",
     description="视频转录、摘要和图文笔记生成服务",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 或指定你的前端地址，如 ["http://localhost:3000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
