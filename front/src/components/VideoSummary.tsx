@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Download, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Clock, Download, ArrowLeft, Loader2, AlertCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import SummarySegment from './SummarySegment';
-import { getTaskResults, exportMarkdown, ResultsResponse } from '@/lib/api';
+import { getTaskResults, exportMarkdown, ResultsResponse, getNotes, saveNotes } from '@/lib/api';
 
 interface VideoData {
   file: File;
@@ -27,24 +27,37 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  // 获取处理结果
+  const [notes, setNotes] = useState<string>('');
+  const [saving, setSaving] = useState<boolean>(false);
+
+  // 获取处理结果 + 初始化编辑笔记
   useEffect(() => {
-    const fetchResults = async () => {
+    (async () => {
       try {
         setLoading(true);
         setError(null);
         const data = await getTaskResults(videoData.taskId);
         setResults(data);
+
+        // 尝试从后端获取已保存的笔记；没有则用结果生成草稿
+        try {
+          const content = await getNotes(videoData.taskId);
+          setNotes(content);
+        } catch {
+          const draft: string[] = ['# 视频摘要笔记', '', `文件名: ${videoData.file.name}`, ''];
+          (data.segments || []).forEach((s) => {
+            draft.push(`## ${s.title}`, '', s.summary, '');
+          });
+          setNotes(draft.join('\n'));
+        }
       } catch (error) {
         console.error('Failed to fetch results:', error);
         setError(error instanceof Error ? error.message : '获取结果失败');
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchResults();
-  }, [videoData.taskId]);
+    })();
+  }, [videoData.taskId, videoData.file.name]);
 
   const handleSegmentClick = (timeInSeconds: number) => {
     setCurrentTime(timeInSeconds);
@@ -172,18 +185,35 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
             </p>
           </div>
         </div>
-        <Button
-          onClick={handleExport}
-          disabled={exporting}
-          className="bg-primary text-primary-foreground hover:bg-primary-hover"
-        >
-          {exporting ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4 mr-2" />
-          )}
-          {exporting ? '导出中...' : '导出摘要'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                setSaving(true);
+                await saveNotes(videoData.taskId, notes);
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {saving ? '保存中...' : '保存笔记'}
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={exporting}
+            className="bg-primary text-primary-foreground hover:bg-primary-hover"
+          >
+            {exporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {exporting ? '导出中...' : '导出摘要'}
+          </Button>
+        </div>
       </div>
 
       {/* Summary Notes below */}
@@ -209,6 +239,16 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
                 暂无摘要数据
               </div>
             )}
+          </div>
+
+          {/* Markdown 编辑区域 */}
+          <div className="mt-6">
+            <textarea
+              className="w-full h-64 p-4 border rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="在这里编辑生成的笔记内容（Markdown）..."
+            />
           </div>
         </div>
       </div>

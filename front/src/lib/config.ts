@@ -1,5 +1,8 @@
 // 应用配置
 export const config = {
+  // Mock 模式开关 - 开发时可以不依赖后端
+  useMock: import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VITE_USE_MOCK === '1',
+
   // API基础URL - 可以通过环境变量覆盖
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
 

@@ -1,5 +1,14 @@
 // API服务层 - 与后端视频处理API通信
 import { config } from './config';
+import {
+  mockUploadVideo,
+  mockProcessVideo,
+  mockGetTaskStatus,
+  mockGetTaskResults,
+  mockExportMarkdown,
+  mockGetNotes,
+  mockSaveNotes,
+} from './mockApi';
 
 const API_BASE_URL = config.apiBaseUrl;
 const IMAGE_BASE_URL = config.imageBaseUrl;
@@ -112,6 +121,10 @@ async function apiRequest<T>(
 
 // 1. 上传视频文件
 export async function uploadVideo(file: File): Promise<UploadResponse> {
+  if (config.useMock) {
+    return mockUploadVideo(file);
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
@@ -126,6 +139,10 @@ export async function processVideo(
   taskId: string,
   options: ProcessRequest = {}
 ): Promise<void> {
+  if (config.useMock) {
+    return mockProcessVideo(taskId, options);
+  }
+
   const defaultOptions: ProcessRequest = {
     enable_multimodal: true,
     keep_temp: false,
@@ -143,6 +160,9 @@ export async function processVideo(
 
 // 3. 查询处理状态
 export async function getTaskStatus(taskId: string): Promise<StatusResponse> {
+  if (config.useMock) {
+    return mockGetTaskStatus(taskId);
+  }
   return apiRequest<StatusResponse>(`/api/status/${taskId}`);
 }
 
@@ -163,6 +183,10 @@ function timeToSeconds(timeStr: string): number {
 
 // 4. 获取处理结果（含多模态图片）
 export async function getTaskResults(taskId: string): Promise<ResultsResponse> {
+  if (config.useMock) {
+    return mockGetTaskResults(taskId);
+  }
+
   // 1) 获取后端原始数据（摘要等）
   const backendData = await apiRequest<BackendResultsResponse>(`/api/results/${taskId}`);
 
@@ -219,16 +243,42 @@ export async function getTaskResults(taskId: string): Promise<ResultsResponse> {
   };
 }
 
-// 5. 导出Markdown笔记
+// 5. 导出Markdown笔记（如果已保存到后端，会走后端；否则用前端当前内容生成）
 export async function exportMarkdown(taskId: string): Promise<Blob> {
+  if (config.useMock) {
+    return mockExportMarkdown(taskId);
+  }
+
   const url = `${API_BASE_URL}/api/export/${taskId}/markdown`;
-  
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new ApiError(`导出失败: ${response.statusText}`, response.status);
   }
-  
+
   return response.blob();
+}
+
+// 6. 获取/保存笔记内容（用于编辑）
+export async function getNotes(taskId: string): Promise<string> {
+  if (config.useMock) {
+    return mockGetNotes(taskId);
+  }
+  const res = await fetch(`${API_BASE_URL}/api/notes/${taskId}`);
+  if (!res.ok) throw new ApiError('获取笔记失败', res.status);
+  return await res.text();
+}
+
+export async function saveNotes(taskId: string, content: string): Promise<void> {
+  if (config.useMock) {
+    return mockSaveNotes(taskId, content);
+  }
+  const res = await fetch(`${API_BASE_URL}/api/notes/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new ApiError('保存笔记失败', res.status);
 }
 
 // 轮询状态直到完成的辅助函数
@@ -241,7 +291,7 @@ export async function pollTaskStatus(
     const poll = async () => {
       try {
         const status = await getTaskStatus(taskId);
-        
+
         // 调用进度回调
         if (onProgress) {
           onProgress(status);
@@ -252,7 +302,7 @@ export async function pollTaskStatus(
           resolve(status);
           return;
         }
-        
+
         if (status.status === 'failed') {
           reject(new ApiError(status.error_message || '处理失败'));
           return;
