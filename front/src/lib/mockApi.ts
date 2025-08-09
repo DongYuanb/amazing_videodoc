@@ -1,5 +1,39 @@
 // Mock API 实现 - 用于前端独立开发
 import { UploadResponse, ProcessRequest, StatusResponse, ResultsResponse, Segment } from './api';
+import { config } from './config';
+
+// 时间字符串转换为秒数的辅助函数（HH:MM:SS.mmm / HH:MM:SS / MM:SS）
+function timeToSeconds(timeStr: string): number {
+  try {
+    const s = timeStr.split('.')[0];
+    const parts = s.split(':');
+    if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+// 时间格式化：优先显示 MM:SS；若小时>0，显示 HH:MM:SS
+function formatTime(timeStr: string): string {
+  try {
+    const [hms] = timeStr.split('.');
+    const parts = hms.split(':').map((p) => p.padStart(2, '0'));
+    if (parts.length === 3) {
+      const [h, m, s] = parts;
+      if (parseInt(h) > 0) return `${h}:${m}:${s}`;
+      return `${m}:${s}`; // 小时为 0 时用 MM:SS
+    }
+    if (parts.length === 2) {
+      const [m, s] = parts;
+      return `${m}:${s}`;
+    }
+    return timeStr;
+  } catch {
+    return timeStr;
+  }
+}
+
 
 // 内存中的任务存储
 interface MockTask {
@@ -28,7 +62,7 @@ function delay(ms: number): Promise<void> {
 
 // Mock 上传视频
 export async function mockUploadVideo(file: File): Promise<UploadResponse> {
-  await delay(500); // 模拟网络延迟
+  await delay(120); // 模拟网络延迟（加速）
 
   const taskId = generateTaskId();
   const task: MockTask = {
@@ -53,7 +87,7 @@ export async function mockUploadVideo(file: File): Promise<UploadResponse> {
 
 // Mock 开始处理视频
 export async function mockProcessVideo(taskId: string, options: ProcessRequest = {}): Promise<void> {
-  await delay(300);
+  await delay(100);
 
   const task = mockTasks.get(taskId);
   if (!task) {
@@ -71,11 +105,11 @@ export async function mockProcessVideo(taskId: string, options: ProcessRequest =
 // 模拟进度更新
 function startMockProgress(taskId: string) {
   const steps = [
-    { step: 'asr', progress: 0.2, duration: 2000 },
-    { step: 'merge', progress: 0.4, duration: 1500 },
-    { step: 'summary', progress: 0.7, duration: 2500 },
-    { step: 'multimodal', progress: 0.9, duration: 3000 },
-    { step: 'completed', progress: 1.0, duration: 500 }
+    { step: 'asr', progress: 0.3, duration: 300 },
+    { step: 'merge', progress: 0.6, duration: 250 },
+    { step: 'summary', progress: 0.85, duration: 350 },
+    { step: 'multimodal', progress: 0.95, duration: 300 },
+    { step: 'completed', progress: 1.0, duration: 200 }
   ];
 
   let currentStepIndex = 0;
@@ -134,6 +168,46 @@ export async function mockGetTaskResults(taskId: string): Promise<ResultsRespons
   if (task.status !== 'completed') {
     throw new Error('任务尚未完成');
   }
+
+  // 若本地有伪后端 JSON，优先读取它
+  try {
+    const effectiveId = config.pseudoTaskId || taskId;
+    const url = `/storage/tasks/${effectiveId}/multimodal_notes/multimodal_notes.json`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const segs = Array.isArray(data?.segments) ? data.segments : [];
+      const segments: Segment[] = segs.map((s: any, idx: number) => {
+        const start = (s.start_time || '').toString();
+        const end = (s.end_time || '').toString();
+        const startSec = timeToSeconds(start);
+        const keyframes: string[] = (s.key_frames || []).map((relPath: string) => {
+          const normalized = relPath.replace(/\\/g, '/');
+          return `/storage/tasks/${effectiveId}/multimodal_notes/${normalized}`;
+        });
+        return {
+          id: `segment_${idx}`,
+          timestamp: `${formatTime(start)} - ${formatTime(end)}`,
+          timeInSeconds: startSec,
+          title: `片段 ${idx + 1} (${formatTime(start)} - ${formatTime(end)})`,
+          summary: s.summary || '',
+          keyframe: keyframes[0] || '',
+          keyframes,
+        } as Segment;
+      });
+      const total = Math.max(0, ...segments.map(s => s.timeInSeconds)) + 1;
+      return {
+        task_id: effectiveId,
+        filename: task.filename,
+        status: task.status,
+        segments,
+        total_duration: total,
+        created_at: task.created_at,
+      };
+    }
+  } catch (_) { /* 忽略，回退到内置示例 */ }
+
+  // 回退：生成内置示例片段
 
   // 生成模拟的分段数据
   const segments: Segment[] = [
