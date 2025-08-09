@@ -55,8 +55,7 @@ def test_process(task_id):
     
     try:
         data = {
-            "start_from": "audio_extract",
-            "enable_multimodal": False,  # 先测试不包含图文功能
+            "enable_multimodal": True,  # 启用图文功能
             "keep_temp": True
         }
         response = requests.post(f"{API_BASE}/api/process/{task_id}", json=data)
@@ -194,7 +193,6 @@ def main():
     print("⚙️ 开始处理 (启用图文功能)...")
     try:
         data = {
-            "start_from": "audio_extract",
             "enable_multimodal": True,  # 启用图文功能
             "keep_temp": True
         }

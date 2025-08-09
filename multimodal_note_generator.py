@@ -15,13 +15,13 @@ from video_frame_deduplicator import VideoFrameDeduplicator
 from dotenv import load_dotenv
 load_dotenv()
 
-jina_api_key = os.getenv("JINA_API_KEY")
+cohere_api_key = os.getenv("COHERE_API_KEY")
 
 class MultimodalNoteGenerator:
     """图文混排笔记生成器"""
     
     def __init__(self,
-                 jina_api_key: str,
+                 cohere_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
                  frame_fps: float = 0.5,  # 每2秒抽一帧
                  similarity_threshold: float = 0.9,
@@ -31,26 +31,26 @@ class MultimodalNoteGenerator:
         初始化图文笔记生成器
 
         Args:
-            jina_api_key: Jina API密钥（用于图片去重）
+            cohere_api_key: Cohere API密钥（用于图片去重）
             ffmpeg_path: ffmpeg路径
             frame_fps: 抽帧频率（每秒帧数）
             similarity_threshold: 图片相似度阈值
             max_concurrent_segments: 最大并发处理的时间段数量
             logger: 日志记录器
         """
-        if not jina_api_key:
-            raise ValueError("jina_api_key 不能为空")
+        if not cohere_api_key:
+            raise ValueError("COHERE_API_KEY 不能为空")
 
         self.logger = logger or logging.getLogger(__name__)
 
         self.logger.info("🔧 初始化图文笔记生成器...")
-        self.logger.info(f"   - Jina API Key: {'已设置' if jina_api_key else '未设置'}")
+        self.logger.info(f"   - Cohere API Key: {'已设置' if cohere_api_key else '未设置'}")
         self.logger.info(f"   - FFmpeg路径: {ffmpeg_path}")
         self.logger.info(f"   - 抽帧频率: {frame_fps} fps")
 
         try:
             self.frame_deduplicator = VideoFrameDeduplicator(
-                jina_api_key=jina_api_key,
+                cohere_api_key=cohere_api_key,
                 ffmpeg_path=ffmpeg_path,
                 similarity_threshold=similarity_threshold,
                 logger=self.logger
@@ -419,7 +419,7 @@ class MultimodalNoteGenerator:
 def generate_video_notes(video_path: str,
                         summary_json_path: str,
                         output_dir: str,
-                        jina_api_key: str,
+                        cohere_api_key: str,
                         frame_fps: float = 0.5,
                         max_concurrent_segments: int = 3,
                         logger: Optional[logging.Logger] = None) -> str:
@@ -430,7 +430,7 @@ def generate_video_notes(video_path: str,
         video_path: 视频文件路径
         summary_json_path: 摘要JSON文件路径
         output_dir: 输出目录
-        jina_api_key: Jina API密钥
+        cohere_api_key: COHERE_API_KEY密钥
         frame_fps: 抽帧频率
         max_concurrent_segments: 最大并发处理的时间段数量
         logger: 日志记录器
@@ -439,7 +439,7 @@ def generate_video_notes(video_path: str,
         生成的图文笔记JSON文件路径
     """
     generator = MultimodalNoteGenerator(
-        jina_api_key=jina_api_key,
+        cohere_api_key=cohere_api_key,
         frame_fps=frame_fps,
         max_concurrent_segments=max_concurrent_segments,
         logger=logger
@@ -452,31 +452,3 @@ def generate_video_notes(video_path: str,
     )
 
 
-if __name__ == "__main__":
-    # 测试用例
-    import sys
-    
-    if len(sys.argv) < 4:
-        print("用法: python multimodal_note_generator.py <视频文件> <摘要JSON> <输出目录> [Jina API Key]")
-        sys.exit(1)
-    
-    video_file = sys.argv[1]
-    summary_file = sys.argv[2]
-    output_directory = sys.argv[3]
-    api_key = sys.argv[4] if len(sys.argv) > 4 else os.getenv("JINA_API_KEY")
-    
-    if not api_key:
-        print("❌ 请提供 Jina API Key")
-        sys.exit(1)
-    
-    try:
-        result = generate_video_notes(
-            video_path=video_file,
-            summary_json_path=summary_file,
-            output_dir=output_directory,
-            jina_api_key=api_key
-        )
-        print(f"✅ 成功生成图文笔记: {result}")
-    except Exception as e:
-        print(f"❌ 生成失败: {e}")
-        sys.exit(1)

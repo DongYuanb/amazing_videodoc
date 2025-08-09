@@ -167,14 +167,14 @@ class VideoProcessingWorkflow:
 
     def _create_multimodal_generator(self):
         """创建图文笔记生成器"""
-        jina_api_key = os.getenv("JINA_API_KEY")
-        if not jina_api_key:
-            logger.warning("未提供 Jina API Key，跳过图文笔记生成")
+        cohere_api_key = os.getenv("COHERE_API_KEY")
+        if not cohere_api_key:
+            logger.warning("未提供 Cohere API Key，跳过图文笔记生成")
             return None
 
         try:
             return MultimodalNoteGenerator(
-                jina_api_key=jina_api_key,
+                cohere_api_key=cohere_api_key,
                 ffmpeg_path=os.getenv("FFMPEG_PATH", "ffmpeg")
             )
         except Exception as e:
@@ -445,7 +445,7 @@ async def export_markdown(task_id: str, force_regen: bool = False):
 
     # 生成 Markdown
     generator = MultimodalNoteGenerator(
-        jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+        cohere_api_key=os.getenv("COHERE_API_KEY", "dummy")
     )
 
     # 传递图片基础路径，确保相对路径计算正确
@@ -518,7 +518,7 @@ async def get_notes(task_id: str):
 
     # 生成 Markdown
     generator = MultimodalNoteGenerator(
-        jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+        cohere_api_key=os.getenv("COHERE_API_KEY", "dummy")
     )
 
     # 传递图片基础路径，确保相对路径计算正确
@@ -584,7 +584,7 @@ async def export_pdf(task_id: str):
             raise HTTPException(status_code=404, detail="图文笔记文件不存在")
 
         generator = MultimodalNoteGenerator(
-            jina_api_key=os.getenv("JINA_API_KEY", "dummy")
+            cohere_api_key=os.getenv("COHERE_API_KEY", "dummy")
         )
         generator.export_to_markdown(
             notes_json_path=str(notes_file),

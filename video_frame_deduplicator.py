@@ -2,45 +2,56 @@ import os
 import subprocess
 import tempfile
 import base64
-import json
 import time
 import logging
-from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import cohere
 import numpy as np
-from PIL import Image
 import shutil
-from image_preprocessor import ImagePreprocessor
 
 
 class VideoFrameDeduplicator:
     """视频帧去重处理器：抽取视频帧，使用Cohere API获取embeddings，去除相似帧"""
 
+    # 类常量
+    DEFAULT_EMBEDDING_MODEL = "embed-v4.0"
+    DEFAULT_BATCH_SIZE = 10
+    DEFAULT_API_DELAY = 0.1
+    SUPPORTED_IMAGE_FORMATS = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp'
+    }
+
     def __init__(self,
-                 jina_api_key: str,
+                 cohere_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
                  similarity_threshold: float = 0.9,
                  api_timeout: int = 30,
-                 image_preprocessor: Optional[ImagePreprocessor] = None,
+                 embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+                 batch_size: int = DEFAULT_BATCH_SIZE,
                  logger: Optional[logging.Logger] = None):
         """
         初始化去重处理器
 
         Args:
-            jina_api_key: Cohere API密钥
+            cohere_api_key: Cohere API密钥
             ffmpeg_path: ffmpeg可执行文件路径
             similarity_threshold: 相似度阈值，超过此值认为是重复图片
             api_timeout: API请求超时时间（秒）
-            image_preprocessor: 图片预处理器，用于裁剪等操作
+            embedding_model: 使用的embedding模型名称
+            batch_size: 批处理大小
             logger: 日志记录器
         """
-        self.jina_api_key = jina_api_key
+        self.cohere_api_key = cohere_api_key
         self.ffmpeg_path = ffmpeg_path
         self.similarity_threshold = similarity_threshold
         self.api_timeout = api_timeout
-        self.cohere_client = cohere.ClientV2(api_key=jina_api_key)
-        self.image_preprocessor = image_preprocessor
+        self.embedding_model = embedding_model
+        self.batch_size = batch_size
+        self.cohere_client = cohere.ClientV2(api_key=cohere_api_key)
         self.logger = logger or logging.getLogger(__name__)
 
     def extract_frames(self, 
@@ -89,7 +100,7 @@ class VideoFrameDeduplicator:
         ]
         
         try:
-            result = subprocess.run(cmd, capture_output=True, check=True, text=True)
+            subprocess.run(cmd, capture_output=True, check=True, text=True)
             self.logger.info(f"Frame extraction completed. Output: {output_dir}")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"ffmpeg failed: {e.stderr}")
@@ -106,45 +117,50 @@ class VideoFrameDeduplicator:
         self.logger.info(f"Extracted {len(frame_files)} frames")
         return frame_files
     
+    def _detect_image_content_type(self, image_path: str) -> str:
+        """检测图片的MIME类型"""
+        image_path_lower = image_path.lower()
+        for ext, content_type in self.SUPPORTED_IMAGE_FORMATS.items():
+            if image_path_lower.endswith(ext):
+                return content_type
+        return "image/jpeg"  # 默认为jpeg
+
     def _image_to_base64(self, image_path: str) -> str:
         """将图片转换为Cohere需要的base64格式"""
         with open(image_path, "rb") as image_file:
             image_data = base64.b64encode(image_file.read()).decode('utf-8')
-            # 检测图片格式
-            image_path_lower = image_path.lower()
-            if image_path_lower.endswith('.png'):
-                content_type = "image/png"
-            elif image_path_lower.endswith('.jpg') or image_path_lower.endswith('.jpeg'):
-                content_type = "image/jpeg"
-            elif image_path_lower.endswith('.gif'):
-                content_type = "image/gif"
-            elif image_path_lower.endswith('.webp'):
-                content_type = "image/webp"
-            else:
-                content_type = "image/jpeg"  # 默认为jpeg
-
+            content_type = self._detect_image_content_type(image_path)
             return f"data:{content_type};base64,{image_data}"
     
-    def get_batch_embeddings(self, image_paths: List[str], batch_size: int = 10, embedding_lock: Optional[object] = None) -> List[np.ndarray]:
+    def get_batch_embeddings(self,
+                               image_paths: List[str],
+                               batch_size: Optional[int] = None,
+                               embedding_lock: Optional[object] = None) -> Tuple[List[np.ndarray], List[str]]:
         """
         批量获取图片embeddings
-        
+
         Args:
             image_paths: 图片路径列表
-            batch_size: 批处理大小
+            batch_size: 批处理大小，如果为None则使用默认值
             embedding_lock: 用于保护API调用的锁
 
         Returns:
-            embeddings向量列表
+            (embeddings向量列表, 成功处理的图片路径列表)
         """
+        if batch_size is None:
+            batch_size = self.batch_size
+
         all_embeddings = []
-        
+        successful_paths = []
+
         for i in range(0, len(image_paths), batch_size):
             batch_paths = image_paths[i:i + batch_size]
             self.logger.info(f"Processing batch {i//batch_size + 1}/{(len(image_paths) + batch_size - 1)//batch_size}")
-            
+
             # 准备API请求数据
             input_data = []
+            batch_valid_paths = []
+
             for path in batch_paths:
                 try:
                     base64_image = self._image_to_base64(path)
@@ -156,37 +172,38 @@ class VideoFrameDeduplicator:
                             }
                         ]
                     })
+                    batch_valid_paths.append(path)
                 except Exception as e:
                     self.logger.warning(f"Failed to process image {path}: {e}")
                     continue
-            
+
             if not input_data:
                 continue
-            
+
             # 调用Cohere API（使用锁保护）
             try:
                 if embedding_lock:
                     with embedding_lock:
                         embeddings = self._call_cohere_api(input_data)
-                        # 在锁内添加延迟避免API限制
-                        time.sleep(0.1)
+                        time.sleep(self.DEFAULT_API_DELAY)
                 else:
                     embeddings = self._call_cohere_api(input_data)
-                    time.sleep(0.1)
+                    time.sleep(self.DEFAULT_API_DELAY)
 
                 all_embeddings.extend(embeddings)
+                successful_paths.extend(batch_valid_paths)
 
             except Exception as e:
                 self.logger.warning(f"API call failed for batch: {e}")
                 continue
-        
-        return all_embeddings
+
+        return all_embeddings, successful_paths
     
     def _call_cohere_api(self, input_data: List[Dict[str, Any]]) -> List[np.ndarray]:
         """调用Cohere API获取embeddings"""
         try:
             response = self.cohere_client.embed(
-                model="embed-v4.0",
+                model=self.embedding_model,
                 input_type="image",
                 embedding_types=["float"],
                 inputs=input_data
@@ -201,16 +218,17 @@ class VideoFrameDeduplicator:
 
         except Exception as e:
             raise RuntimeError(f"Cohere API error: {e}")
-    
-    def calculate_cosine_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
+
+    @staticmethod
+    def calculate_cosine_similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """计算两个向量的余弦相似度"""
         # 归一化向量
         norm1 = np.linalg.norm(embedding1)
         norm2 = np.linalg.norm(embedding2)
-        
+
         if norm1 == 0 or norm2 == 0:
             return 0.0
-        
+
         # 计算余弦相似度
         similarity = np.dot(embedding1, embedding2) / (norm1 * norm2)
         return float(similarity)
@@ -334,34 +352,21 @@ class VideoFrameDeduplicator:
             self.logger.info("1. Extracting frames...")
             frame_paths = self.extract_frames(video_path, start_time, end_time, fps, temp_dir)
 
-            # 2. 预处理图片（裁剪等）
-            self.logger.info("2. Preprocessing images...")
-            # 仅当提供了图片预处理器时才进行预处理
-            if isinstance(self.image_preprocessor, ImagePreprocessor):
-                preprocessed_dir = os.path.join(temp_dir, "preprocessed")
-                preprocessed_paths = self.image_preprocessor.process_images(frame_paths, preprocessed_dir)
-                self.logger.info(f"Preprocessed {len(preprocessed_paths)} images")
-            else:
-                preprocessed_paths = frame_paths
-                self.logger.info("No preprocessing applied")
+            # 2. 获取embeddings
+            self.logger.info("2. Getting embeddings...")
+            embeddings, successful_paths = self.get_batch_embeddings(frame_paths, embedding_lock=embedding_lock)
 
-            # 3. 获取embeddings
-            self.logger.info("3. Getting embeddings...")
-            embeddings = self.get_batch_embeddings(preprocessed_paths, embedding_lock=embedding_lock)
+            if len(embeddings) != len(frame_paths):
+                self.logger.warning(f"Got {len(embeddings)} embeddings for {len(frame_paths)} frames")
+                # 使用成功处理的图片路径
+                frame_paths = successful_paths
 
-            if len(embeddings) != len(preprocessed_paths):
-                self.logger.warning(f"Got {len(embeddings)} embeddings for {len(preprocessed_paths)} frames")
-                # 只处理成功获取embedding的图片
-                min_len = min(len(embeddings), len(preprocessed_paths))
-                preprocessed_paths = preprocessed_paths[:min_len]
-                embeddings = embeddings[:min_len]
+            # 3. 去除重复
+            self.logger.info("3. Removing duplicates...")
+            unique_paths = self.remove_duplicates(frame_paths, embeddings)
 
-            # 4. 去除重复
-            self.logger.info("4. Removing duplicates...")
-            unique_paths = self.remove_duplicates(preprocessed_paths, embeddings)
-
-            # 5. 保存结果
-            self.logger.info("5. Saving unique frames...")
+            # 4. 保存结果
+            self.logger.info("4. Saving unique frames...")
             saved_paths = self.save_unique_frames(unique_paths, output_dir)
 
             # 统计信息
@@ -370,22 +375,14 @@ class VideoFrameDeduplicator:
                 "time_range": (start_time, end_time),
                 "fps": fps,
                 "total_frames": len(frame_paths),
-                "preprocessed_frames": len(preprocessed_paths),
                 "unique_frames": len(saved_paths),
-                "duplicates_removed": len(preprocessed_paths) - len(saved_paths),
+                "duplicates_removed": len(frame_paths) - len(saved_paths),
                 "similarity_threshold": self.similarity_threshold,
-                "preprocessing_applied": isinstance(self.image_preprocessor, ImagePreprocessor),
                 "output_dir": output_dir,
                 "saved_paths": saved_paths
             }
 
             self.logger.info("✅ Process completed successfully!")
-            self.logger.info(f"Total frames extracted: {result['total_frames']}")
-            if result['preprocessing_applied']:
-                self.logger.info(f"Frames after preprocessing: {result['preprocessed_frames']}")
-            self.logger.info(f"Unique frames saved: {result['unique_frames']}")
-            self.logger.info(f"Duplicates removed: {result['duplicates_removed']}")
-            self.logger.info(f"Output directory: {output_dir}")
 
             return result
 
@@ -399,29 +396,7 @@ class VideoFrameDeduplicator:
                     self.logger.warning(f"Failed to clean up temp directory: {e}")
 
 
-def create_deduplicator(jina_api_key: str, **kwargs) -> VideoFrameDeduplicator:
+def create_deduplicator(cohere_api_key: str, **kwargs) -> VideoFrameDeduplicator:
     """便捷函数：创建视频帧去重处理器"""
-    return VideoFrameDeduplicator(jina_api_key, **kwargs)
+    return VideoFrameDeduplicator(cohere_api_key, **kwargs)
 
-
-# 使用示例
-if __name__ == "__main__":
-    # 示例用法
-    api_key = os.getenv("JINA_API_KEY")
-
-    # 创建处理器
-    deduplicator = VideoFrameDeduplicator(
-        jina_api_key=api_key,
-        similarity_threshold=0.95,  # 提高相似度阈值，只去除非常相似的帧
-    )
-
-    # 处理视频
-    result = deduplicator.process_video_frames(
-        video_path="/Users/musk/Documents/code/amazing_videodoc/upload/demo_video.mp4",
-        start_time=10.0,  # 从10秒开始
-        end_time=60.0,    # 到60秒结束
-        output_dir="output/unique_frames",
-        fps=0.5,          # 每2秒抽取1帧，减少抽帧频率
-    )
-
-    print("VideoFrameDeduplicator ready")
