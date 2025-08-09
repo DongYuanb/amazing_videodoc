@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, Download, ArrowLeft, Loader2, AlertCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import SummarySegment from './SummarySegment';
+import SummarySegment, { SegmentEditState } from './SummarySegment';
 import { getTaskResults, exportMarkdown, ResultsResponse, getNotes, saveNotes } from '@/lib/api';
 
 interface VideoData {
@@ -29,6 +29,15 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
 
   const [notes, setNotes] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
+  const [edits, setEdits] = useState<Record<string, SegmentEditState>>({});
+
+  const updateEdit = (id: string, update: Partial<SegmentEditState>) => {
+    setEdits((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], ...update },
+    }));
+  };
+
 
   // 获取处理结果 + 初始化编辑笔记
   useEffect(() => {
@@ -39,17 +48,18 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
         const data = await getTaskResults(videoData.taskId);
         setResults(data);
 
-        // 尝试从后端获取已保存的笔记；没有则用结果生成草稿
-        try {
-          const content = await getNotes(videoData.taskId);
-          setNotes(content);
-        } catch {
-          const draft: string[] = ['# 视频摘要笔记', '', `文件名: ${videoData.file.name}`, ''];
-          (data.segments || []).forEach((s) => {
-            draft.push(`## ${s.title}`, '', s.summary, '');
-          });
-          setNotes(draft.join('\n'));
-        }
+        // 初始化每段的编辑状态（标题/摘要来自数据，布局用默认值）
+        const initial: Record<string, SegmentEditState> = {};
+        (data.segments || []).forEach((s) => {
+          initial[s.id] = {
+            title: s.title || '',
+            summary: (s as any).summary || '',
+            cols: 3,
+            heroHeight: 280,
+          };
+        });
+        setEdits(initial);
+        setNotes('');
       } catch (error) {
         console.error('Failed to fetch results:', error);
         setError(error instanceof Error ? error.message : '获取结果失败');
@@ -58,6 +68,38 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
       }
     })();
   }, [videoData.taskId, videoData.file.name]);
+
+  // HTML 预览（根据分段编辑状态生成富展示）
+  const preview = useMemo(() => {
+    if (!results?.segments) return null;
+    return (
+      <div className="space-y-8">
+        {results.segments.map((s) => {
+          const e = edits[s.id] || { title: s.title, summary: (s as any).summary || '', cols: 3, heroHeight: 280 };
+          const images = (s.keyframes && s.keyframes.length > 0) ? s.keyframes : (s.keyframe ? [s.keyframe] : []);
+          return (
+            <div key={s.id} className="rounded-lg border p-4">
+              <div className="text-sm text-foreground-muted mb-2">{s.timestamp}</div>
+              <h3 className="text-xl font-semibold mb-2">{e.title}</h3>
+              <p className="mb-3 whitespace-pre-wrap">{e.summary}</p>
+              <div className="rounded-lg overflow-hidden bg-muted mb-3">
+                <div className="relative w-full" style={{ height: `${e.heroHeight}px` }}>
+                  <img src={s.keyframe} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                </div>
+              </div>
+              {images.length > 0 && (
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${e.cols}, minmax(0, 1fr))` }}>
+                  {images.map((src, idx) => (
+                    <img key={idx} src={src} alt={`frame-${idx}`} className="w-full h-auto rounded-md object-cover" />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }, [results?.segments, edits]);
 
   const handleSegmentClick = (timeInSeconds: number) => {
     setCurrentTime(timeInSeconds);
@@ -95,6 +137,31 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+  // 由编辑状态构建 HTML 字符串（用于保存/导出）
+  const buildHtmlFromEdits = (res: ResultsResponse | null, es: Record<string, SegmentEditState>) => {
+    if (!res?.segments) return '';
+    const blocks = res.segments.map((s) => {
+      const e = es[s.id] || { title: s.title, summary: (s as any).summary || '', cols: 3, heroHeight: 280 };
+      const images = (s.keyframes && s.keyframes.length > 0) ? s.keyframes : (s.keyframe ? [s.keyframe] : []);
+      const gridCols = `repeat(${e.cols}, minmax(0, 1fr))`;
+      const imgs = images.map((src) => `<img src="${src}" style="width:100%;height:auto;border-radius:8px;object-fit:cover;"/>`).join('');
+      return `
+        <section style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:24px;">
+          <div style="color:var(--muted-foreground);font-size:12px;margin-bottom:8px;">${s.timestamp}</div>
+          <h3 style="font-size:20px;font-weight:600;margin:0 0 8px 0;">${e.title}</h3>
+          <p style="white-space:pre-wrap;margin:0 0 12px 0;">${e.summary || ''}</p>
+          <div style="border-radius:12px;overflow:hidden;background:var(--muted);margin:0 0 12px 0;">
+            <div style="position:relative;width:100%;height:${e.heroHeight}px;">
+              <img src="${s.keyframe}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+            </div>
+          </div>
+          ${images.length ? `<div style=\"display:grid;grid-template-columns:${gridCols};gap:8px;\">${imgs}</div>` : ''}
+        </section>
+      `;
+    });
+    return `<article>${blocks.join('')}</article>`;
+  };
+
 
   // 如果正在加载，显示加载状态
   if (loading) {
@@ -191,7 +258,9 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
             onClick={async () => {
               try {
                 setSaving(true);
-                await saveNotes(videoData.taskId, notes);
+                // 将 edits + results 生成 HTML，再保存
+                const html = buildHtmlFromEdits(results, edits);
+                await saveNotes(videoData.taskId, html);
               } finally {
                 setSaving(false);
               }
@@ -216,14 +285,12 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
         </div>
       </div>
 
-      {/* Summary Notes below */}
+      {/* Segments and Live HTML Preview below */}
       <div className="max-w-6xl mx-auto px-4 pb-12">
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-6">
             <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <h2 className="text-xl font-medium text-foreground">
-              Summary Notes
-            </h2>
+            <h2 className="text-xl font-medium text-foreground">Segments</h2>
           </div>
           <div className="space-y-4">
             {results?.segments?.map((segment, index) => (
@@ -233,22 +300,23 @@ const VideoSummary: React.FC<VideoSummaryProps> = ({ videoData, onBack }) => {
                 isActive={currentTime >= segment.timeInSeconds &&
                   (index === (results?.segments?.length || 0) - 1 || currentTime < (results?.segments?.[index + 1]?.timeInSeconds || 0))}
                 onClick={() => handleSegmentClick(segment.timeInSeconds)}
+                edit={edits[segment.id] || { title: segment.title, summary: (segment as any).summary || '', cols: 3, heroHeight: 280 }}
+                onEditChange={(u) => updateEdit(segment.id, u)}
               />
             )) || (
-              <div className="text-center text-muted-foreground py-8">
-                暂无摘要数据
-              </div>
+              <div className="text-center text-muted-foreground py-8">暂无摘要数据</div>
             )}
           </div>
 
-          {/* Markdown 编辑区域 */}
-          <div className="mt-6">
-            <textarea
-              className="w-full h-64 p-4 border rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-background"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="在这里编辑生成的笔记内容（Markdown）..."
-            />
+          {/* Live HTML Preview */}
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
+              <h2 className="text-xl font-medium text-foreground">预览</h2>
+            </div>
+            <div className="prose dark:prose-invert max-w-none border rounded-md p-4 overflow-auto">
+              {preview}
+            </div>
           </div>
         </div>
       </div>

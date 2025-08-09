@@ -269,7 +269,14 @@ export async function mockGetNotes(taskId: string): Promise<string> {
   const results = await mockGetTaskResults(taskId);
   const md: string[] = ['# 视频摘要笔记', '', `文件名: ${results.filename}`, ''];
   results.segments.forEach((s) => {
-    md.push(`## ${s.title}`, '', s.summary, '');
+    md.push(`## ${s.title}`);
+    if (s.timestamp) md.push('', `**时间段**: ${s.timestamp}`);
+    if (s.summary) md.push('', s.summary);
+    if (s.keyframes && s.keyframes.length) {
+      md.push('');
+      s.keyframes.forEach((img) => md.push(`![关键帧](${img})`));
+    }
+    md.push('', '---', '');
   });
   return md.join('\n');
 }
@@ -283,9 +290,50 @@ export async function mockSaveNotes(taskId: string, content: string): Promise<vo
 
 // Mock 导出 Markdown
 export async function mockExportMarkdown(taskId: string): Promise<Blob> {
-  await delay(400);
+  await delay(200);
   const task = mockTasks.get(taskId);
   if (!task) throw new Error('任务不存在');
-  const content = task.notes || (await mockGetNotes(taskId));
+  let content = task.notes || (await mockGetNotes(taskId));
+
+  // 将 Markdown 中的图片链接内联为 data URL，确保离线可见
+  const imageRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
+  const urls = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = imageRegex.exec(content)) !== null) {
+    const u = (m[1] || '').trim();
+    if (!u || u.startsWith('data:')) continue;
+    urls.add(u);
+  }
+
+  async function fetchAsDataUrl(u: string): Promise<string | null> {
+    try {
+      const abs = /^https?:\/\//i.test(u) ? u : new URL(u, window.location.origin).toString();
+      const res = await fetch(abs);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string>((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  const pairs: Array<[string, string]> = [];
+  for (const u of urls) {
+    const dataUrl = await fetchAsDataUrl(u);
+    if (dataUrl) pairs.push([u, dataUrl]);
+  }
+  // 替换 Markdown ![]() 链接
+  for (const [u, d] of pairs) {
+    content = content.split(`](${u})`).join(`](${d})`);
+  }
+  // 替换 HTML <img src="...">
+  for (const [u, d] of pairs) {
+    content = content.split(`src="${u}"`).join(`src="${d}"`);
+  }
+
   return new Blob([content], { type: 'text/markdown' });
 }
