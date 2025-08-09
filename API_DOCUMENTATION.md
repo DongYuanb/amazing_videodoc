@@ -142,16 +142,113 @@ curl -O "http://localhost:8000/api/export/$TASK_ID/markdown"
 
 ---
 
-## 🐛 常见问题
+# 在线视频解析API
 
-**Q: 上传失败怎么办？**  
-A: 检查文件格式是否支持，文件大小是否超限
+## 📋 概述
 
-**Q: 处理卡住了？**  
-A: 查看服务器日志，可能是API密钥配置问题
+新增的在线视频解析功能允许用户直接通过视频URL进行处理，无需手动下载视频文件。
 
-**Q: 图文笔记生成失败？**  
-A: 确认 `JINA_API_KEY` 环境变量已正确配置
+## 🚀 支持的平台
 
-**Q: 如何提高处理速度？**  
-A: 设置 `enable_multimodal: false` 跳过图文笔记生成
+### ✅ 已支持
+- **Bilibili** - 完全支持，基于yt-dlp
+
+### 🔄 计划支持
+- **抖音/TikTok** 
+- **YouTube**
+- **小红书** 
+
+## 📡 API接口
+
+### 1. 下载并处理在线视频
+
+```http
+POST /api/download-url
+Content-Type: application/json
+
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+    "quality": "medium",
+    "platform": "youtube"  // 可选，自动检测
+}
+```
+
+**响应示例：**
+```json
+{
+    "task_id": "uuid-string",
+    "platform": "youtube",
+    "title": "视频标题",
+    "message": "视频下载已开始",
+    "estimated_duration": 300
+}
+```
+
+### 2. 查询下载状态
+
+```http
+GET /api/download-status/{task_id}
+```
+
+**响应示例：**
+```json
+{
+    "task_id": "uuid-string",
+    "status": "downloading",  // downloading, processing, completed, failed
+    "progress": 0.3,
+    "download_progress": 0.6,
+    "processing_progress": 0.0,
+    "platform": "youtube",
+    "title": "视频标题",
+    "error_message": null
+}
+```
+
+### 3. 预览视频信息
+
+```http
+POST /api/preview-video
+Content-Type: application/json
+
+{
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
+```
+
+**响应示例：**
+```json
+{
+    "platform": "youtube",
+    "title": "视频标题",
+    "duration": 300,
+    "thumbnail": "https://thumbnail-url.jpg",
+    "uploader": "频道名称",
+    "view_count": 1000000
+}
+```
+
+### 4. 获取支持的平台
+
+```http
+GET /api/supported-platforms
+```
+
+**响应示例：**
+```json
+{
+    "platforms": [
+        {
+            "name": "YouTube",
+            "value": "youtube",
+            "supported": true,
+            "description": "支持YouTube视频下载"
+        },
+        {
+            "name": "Bilibili",
+            "value": "bilibili",
+            "supported": true,
+            "description": "支持B站视频下载"
+        }
+    ]
+}
+```
