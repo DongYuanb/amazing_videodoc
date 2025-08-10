@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 # 导入路由
-from routers import upload, process, export, download
+from routers import upload, process, export, download, agent
 
 load_dotenv()
 
@@ -50,6 +50,7 @@ app.include_router(upload.router)
 app.include_router(process.router)
 app.include_router(export.router)
 app.include_router(download.router)
+app.include_router(agent.router)
 
 
 @app.get("/")
