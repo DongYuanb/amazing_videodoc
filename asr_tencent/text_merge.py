@@ -33,11 +33,19 @@ class TextMerger:
         if not sentences:return []
 
         input_text="\n".join([f"[{i}]: {s['text']}" for i,s in enumerate(sentences)])
-        prompt=f"""合并语义相关句子，保持顺序，返回JSON格式：
-[{{"text":"合并文本","original_indices":[索引列表]}}]
+        prompt = f"""
+将输入的字幕句子按语义相关性合并成几个阶段，每个阶段的内容应主题一致、上下文紧密相关。
+注意：
+1. 保持原有顺序，不能打乱。
+2. 不要把所有句子合并成一个整体，阶段数量应为 2 个及以上。
+3. 如果两个句子主题差异较大，则应分到不同阶段。
+4. 输出 JSON 数组，每个元素包含：
+   - "text": 合并后的完整文本（句子之间用空格连接）
+   - "original_indices": 参与合并的原句索引列表（按原顺序）
 
 输入：
-{input_text}"""
+{input_text}
+"""
 
         try:
             resp=self.client.chat.completions.create(model=self.model_id,messages=[{"role":"user","content":prompt}])

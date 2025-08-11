@@ -19,7 +19,7 @@ class MultimodalNoteGenerator:
     def __init__(self,
                  cohere_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
-                 frame_fps: float = 0.5,  # 每2秒抽一帧
+                 frame_fps: float = 0.1,  # 每10秒抽一帧
                  similarity_threshold: float = 0.9,
                  max_concurrent_segments: int = 3,
                  logger: Optional[logging.Logger] = None):
@@ -305,7 +305,7 @@ class MultimodalNoteGenerator:
 
 
 def generate_video_notes(video_path: str, summary_json_path: str, output_dir: str,
-                        cohere_api_key: str, frame_fps: float = 0.5,
+                        cohere_api_key: str, frame_fps: float = 0.1,
                         max_concurrent_segments: int = 3,
                         logger: Optional[logging.Logger] = None) -> str:
     """生成视频的图文混排笔记"""
