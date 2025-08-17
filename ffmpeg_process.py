@@ -1,6 +1,6 @@
 import os,subprocess,tempfile,urllib.request,urllib.parse
 from pathlib import Path
-from typing import Union,Tuple,Optional
+from typing import Union,Tuple,Optional,List
 
 class VideoProcessor:
     """视频处理器：支持文件上传和链接解析，实现音视频分流"""
@@ -48,6 +48,63 @@ class VideoProcessor:
         ],check=True,capture_output=True)
 
         return audio_out,video_out
+
+    def extract_frames(self, video_path: str, start_time: float, end_time: float,
+                      fps: float = 1.0, output_dir: str = None) -> List[str]:
+        """
+        从视频指定时间范围抽取帧
+
+        Args:
+            video_path: 视频文件路径
+            start_time: 开始时间（秒）
+            end_time: 结束时间（秒）
+            fps: 抽帧频率（每秒帧数）
+            output_dir: 输出目录
+
+        Returns:
+            抽取的帧图片路径列表
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+
+        if start_time >= end_time:
+            raise ValueError("start_time must be less than end_time")
+
+        # 创建输出目录
+        if output_dir is None:
+            output_dir = tempfile.mkdtemp(prefix="video_frames_")
+        else:
+            os.makedirs(output_dir, exist_ok=True)
+
+        # 构建ffmpeg命令
+        duration = end_time - start_time
+        output_pattern = os.path.join(output_dir, "frame_%06d.jpg")
+
+        cmd = [
+            self.ffmpeg,
+            "-i", video_path,
+            "-ss", str(start_time),
+            "-t", str(duration),
+            "-vf", f"fps={fps}",
+            "-y",  # 覆盖输出文件
+            output_pattern
+        ]
+
+        try:
+            subprocess.run(cmd, capture_output=True, check=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"ffmpeg failed: {e.stderr}")
+
+        # 获取生成的图片文件列表
+        frame_files = []
+        for file in sorted(os.listdir(output_dir)):
+            if file.startswith("frame_") and file.endswith(".jpg"):
+                frame_files.append(os.path.join(output_dir, file))
+
+        if not frame_files:
+            raise RuntimeError("No frames were extracted")
+
+        return frame_files
 
     def process_file(self,file_path:str,output_dir:Optional[str]=None)->Tuple[str,str]:
         """处理本地视频文件"""
