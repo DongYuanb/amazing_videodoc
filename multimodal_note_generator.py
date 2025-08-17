@@ -13,7 +13,7 @@ class MultimodalNoteGenerator:
     def __init__(self,
                  cohere_api_key: str,
                  ffmpeg_path: str = "ffmpeg",
-                 frame_fps: float = 0.1,
+                 frame_fps: float = 0.2,
                  similarity_threshold: float = 0.9,
                  max_concurrent_segments: int = 3,
                  logger: Optional[logging.Logger] = None):
@@ -32,6 +32,8 @@ class MultimodalNoteGenerator:
                 similarity_threshold=similarity_threshold,
                 frame_fps=frame_fps,
                 max_concurrent_segments=max_concurrent_segments,
+                enable_text_alignment=True,  # 启用图文对齐
+                max_aligned_frames=3,        # 每段最多3帧
                 logger=self.logger
             )
         except Exception as e:

@@ -14,8 +14,9 @@ class MultimodalService:
     IMG_FORMATS={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'}
 
     def __init__(self,cohere_api_key:str,ffmpeg_path:str="ffmpeg",similarity_threshold:float=0.9,
-                 embedding_model:str=EMBED_MODEL,batch_size:int=BATCH_SIZE,frame_fps:float=0.1,
-                 max_concurrent_segments:int=3,logger:Optional[logging.Logger]=None):
+                 embedding_model:str=EMBED_MODEL,batch_size:int=BATCH_SIZE,frame_fps:float=0.2,
+                 max_concurrent_segments:int=3,enable_text_alignment:bool=True,max_aligned_frames:int=3,
+                 logger:Optional[logging.Logger]=None):
         """初始化多模态服务"""
         self.api_key=cohere_api_key
         self.sim_thresh=similarity_threshold
@@ -23,6 +24,8 @@ class MultimodalService:
         self.batch_sz=batch_size
         self.fps=frame_fps
         self.max_workers=max_concurrent_segments
+        self.enable_text_alignment=enable_text_alignment
+        self.max_aligned_frames=max_aligned_frames
         self.client=cohere.ClientV2(api_key=cohere_api_key)
         self.video_proc=VideoProcessor(ffmpeg_path)
         self.logger=logger or logging.getLogger(__name__)
@@ -181,16 +184,28 @@ class MultimodalService:
         except (ValueError,IndexError) as e:
             raise ValueError(f"时间格式错误: {t}, {e}")
 
-    def extract_segment_frames(self,video_path:str,start_time:str,end_time:str,output_dir:str)->List[str]:
-        """提取时间段视频帧并去重"""
+    def extract_segment_frames(self,video_path:str,start_time:str,end_time:str,output_dir:str,
+                             text_summary:str="",enable_alignment:bool=True)->List[str]:
+        """提取时间段视频帧并去重，支持图文对齐"""
         start_sec,end_sec=self._parse_time(start_time),self._parse_time(end_time)
         seg_dir=os.path.join(output_dir,f"segment_{start_time.replace(':','-')}_to_{end_time.replace(':','-')}")
         os.makedirs(seg_dir,exist_ok=True)
 
         try:
+            # 1. 先提取和去重帧
             result=self.process_video_frames(video_path,start_sec,end_sec,seg_dir,
                                            self.fps,keep_temp=False,lock=self._lock)
-            return result.get("saved_paths",[])
+            frame_paths=result.get("saved_paths",[])
+
+            # 2. 如果启用对齐且有文本摘要，进行图文对齐
+            if enable_alignment and self.enable_text_alignment and text_summary.strip() and frame_paths:
+                aligned_paths=self.align_frames_with_text(frame_paths,text_summary)
+                # 重新保存对齐后的帧到新目录
+                aligned_dir=os.path.join(seg_dir,"aligned")
+                final_paths=self.save_unique_frames(aligned_paths,aligned_dir,copy_files=True)
+                return final_paths
+
+            return frame_paths
         except Exception as e:
             self.logger.error(f"段 {start_time}-{end_time} 处理失败: {e}")
             return []
@@ -201,7 +216,8 @@ class MultimodalService:
         start,end,summary=seg.get("start_time",""),seg.get("end_time",""),seg.get("summary","")
 
         try:
-            paths=self.extract_segment_frames(vid_path,start,end,frames_dir)
+            # 传入摘要文本进行图文对齐
+            paths=self.extract_segment_frames(vid_path,start,end,frames_dir,summary,enable_alignment=True)
             rel_paths=[os.path.relpath(p,out_dir) for p in paths]
         except Exception as e:
             self.logger.error(f"段 {start}-{end} 失败: {e}")
@@ -210,6 +226,41 @@ class MultimodalService:
         return {"segment_id":i+1,"start_time":start,"end_time":end,
                 "duration_seconds":self._parse_time(end)-self._parse_time(start),
                 "summary":summary,"key_frames":rel_paths,"frame_count":len(rel_paths)}
+
+    def align_frames_with_text(self,frame_paths:List[str],text_summary:str,max_frames:int=None)->List[str]:
+        """使用Cohere跨模态嵌入对齐图文"""
+        if max_frames is None:max_frames=self.max_aligned_frames
+        if not frame_paths or not text_summary.strip():
+            return frame_paths[:max_frames]
+
+        try:
+            # 1. 获取文本嵌入
+            text_input={"content":[{"type":"text","text":text_summary}]}
+            text_resp=self.client.embed(model=self.embed_model,input_type="search_query",
+                                       embedding_types=["float"],inputs=[text_input])
+            text_embed=np.array(text_resp.embeddings.float_[0])
+
+            # 2. 获取图像嵌入
+            img_embeds,valid_paths=self.generate_embeddings(frame_paths)
+            if not img_embeds:
+                return frame_paths[:max_frames]
+
+            # 3. 计算跨模态相似度
+            similarities=[]
+            for img_embed in img_embeds:
+                sim=self.calc_similarity(text_embed,img_embed)
+                similarities.append(sim)
+
+            # 4. 按相似度排序，选择最匹配的帧
+            sorted_indices=sorted(range(len(similarities)),key=lambda i:similarities[i],reverse=True)
+            aligned_paths=[valid_paths[i] for i in sorted_indices[:max_frames]]
+
+            self.logger.info(f"文本对齐: {len(frame_paths)}帧 -> {len(aligned_paths)}帧, 最高相似度: {max(similarities):.3f}")
+            return aligned_paths
+
+        except Exception as e:
+            self.logger.warning(f"图文对齐失败: {e}, 使用原始帧")
+            return frame_paths[:max_frames]
 
     def generate_multimodal_notes(self,video_path:str,summary_json_path:str,output_dir:str)->str:
         """生成图文混排笔记（并发处理）"""
@@ -318,6 +369,6 @@ class MultimodalService:
         return "\n".join(lines)
 
 
-def create_multimodal_service(cohere_api_key:str,**kwargs)->MultimodalService:
+def create_multimodal_service(cohere_api_key:str,enable_text_alignment:bool=True,**kwargs)->MultimodalService:
     """便捷函数：创建多模态服务"""
-    return MultimodalService(cohere_api_key,**kwargs)
+    return MultimodalService(cohere_api_key,enable_text_alignment=enable_text_alignment,**kwargs)
