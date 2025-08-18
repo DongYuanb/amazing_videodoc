@@ -17,9 +17,9 @@ class Summarizer:
         
     def _init_openai_client(self) -> OpenAI:
         """初始化OpenAI风格客户端"""
-        api_key = os.environ.get("ARK_API_KEY")
+        api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("请设置环境变量 ARK_API_KEY 存储API密钥")
+            raise ValueError("请设置环境变量 OPENAI_API_KEY 存储API密钥")
             
         return OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -167,14 +167,3 @@ class Summarizer:
             "status": "ready"
         }
 
-if __name__ == "__main__":
-    INPUT_FILE = "2.json"    # 输入文件
-    OUTPUT_FILE = "3.json"  # 输出文件
-    MODEL_ID = "openai/gpt-oss-20b:free"  # 模型ID（与OpenAI调用示例一致）
-    
-    try:
-        summarizer = Summarizer(MODEL_ID)
-        summarizer.process_file(INPUT_FILE, OUTPUT_FILE)
-    except Exception as e:
-        print(f"程序错误: {str(e)}", file=sys.stderr)
-        sys.exit(1)

@@ -20,7 +20,7 @@ class VideoProcessingWorkflow:
 
     def _init_services(self):
         """初始化所有服务"""
-        model_id = os.getenv("MODEL_ID", "openai/gpt-oss-20b:free")
+        model_id = os.getenv("MODEL_ID")
 
         # 核心服务
         self.text_merger = TextMerger(model_id)
