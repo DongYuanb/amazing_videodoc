@@ -70,12 +70,7 @@ async def download_from_url(request: DownloadUrlRequest, background_tasks: Backg
     )
     
     # 6. 更新初始状态
-    task_manager.update_status(
-        task_id, 
-        "downloading", 
-        "preparing", 
-        0.1
-    )
+    task_manager.update_status(task_id, "downloading")
     
     return {
         "task_id": task_id,
@@ -94,9 +89,6 @@ async def get_download_status(task_id: str):
         return DownloadStatus(
             task_id=task_id,
             status=metadata["status"],
-            progress=metadata.get("progress", 0.0),
-            download_progress=metadata.get("download_progress", 0.0),
-            processing_progress=metadata.get("processing_progress", 0.0),
             platform=metadata.get("platform"),
             title=metadata.get("title"),
             error_message=metadata.get("error_message")
@@ -204,28 +196,21 @@ async def download_and_process_video(task_id: str, url: str, platform: Platform,
         shutil.move(download_result.file_path, original_video_path)
         
         task_logger.info(f"视频下载完成: {download_result.title}")
-        task_manager.update_status(task_id, "processing", "starting_processing", 0.5)
-        
+        task_manager.update_status(task_id, "processing")
+
         # 3. 启动视频处理工作流
         workflow = VideoProcessingWorkflow(enable_multimodal=True, task_logger=task_logger)
-        
-        def update_progress(step: str, progress: float):
-            # 下载占50%，处理占50%
-            total_progress = 0.5 + (progress * 0.5)
-            task_logger.info(f"处理进度: {step} - {progress:.1%}")
-            task_manager.update_status(task_id, "processing", step, total_progress)
-        
+
         # 执行处理
-        result = workflow.process_video(
+        workflow.process_video(
             video_path=str(original_video_path),
             output_dir=str(task_dir),
-            keep_temp=False,
-            progress_callback=update_progress
+            keep_temp=False
         )
-        
+
         # 处理完成
         task_logger.info("视频处理完成！")
-        task_manager.update_status(task_id, "completed", "finished", 1.0)
+        task_manager.update_status(task_id, "completed")
         
     except Exception as e:
         if task_logger:

@@ -1,10 +1,8 @@
 """任务管理服务"""
-import os
 import json
 import uuid
 from pathlib import Path
 from datetime import datetime
-from typing import Dict
 from fastapi import HTTPException
 
 from task_logger import TaskLogger, create_task_logger
@@ -29,8 +27,6 @@ class TaskManager:
             "task_id": task_id,
             "original_filename": original_filename,
             "status": "pending",
-            "current_step": None,
-            "progress": 0.0,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "error_message": None
@@ -64,17 +60,12 @@ class TaskManager:
         with open(metadata_file, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    def update_status(self, task_id: str, status: str, current_step: str = None,
-                     progress: float = None, error_message: str = None):
+    def update_status(self, task_id: str, status: str, error_message: str = None):
         """更新任务状态"""
         metadata = self.load_metadata(task_id)
         metadata["status"] = status
         metadata["updated_at"] = datetime.now().isoformat()
 
-        if current_step is not None:
-            metadata["current_step"] = current_step
-        if progress is not None:
-            metadata["progress"] = progress
         if error_message is not None:
             metadata["error_message"] = error_message
 
@@ -86,7 +77,7 @@ class TaskManager:
             if error_message:
                 task_logger.error(f"任务状态更新: {status} - {error_message}")
             else:
-                task_logger.info(f"任务状态更新: {status} - {current_step or ''} ({progress or 0:.1%})")
+                task_logger.info(f"任务状态更新: {status}")
 
     def validate_task_completed(self, task_id: str) -> dict:
         """验证任务是否完成并返回元数据"""

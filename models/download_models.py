@@ -38,9 +38,6 @@ class VideoDownloadResult(BaseModel):
 class DownloadStatus(BaseModel):
     task_id: str
     status: str  # downloading, processing, completed, failed
-    progress: float = 0.0
-    download_progress: float = 0.0  # 下载进度
-    processing_progress: float = 0.0  # 处理进度
     platform: Optional[str] = None
     title: Optional[str] = None
     error_message: Optional[str] = None

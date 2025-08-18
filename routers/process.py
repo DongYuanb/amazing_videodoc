@@ -32,7 +32,7 @@ async def start_processing(task_id: str, request: ProcessRequest, background_tas
     )
 
     # 更新状态
-    task_manager.update_status(task_id, "processing", "starting", 0.1)
+    task_manager.update_status(task_id, "processing", "starting")
 
     return {"message": "处理已开始", "task_id": task_id}
 
@@ -93,23 +93,17 @@ async def process_video_background(task_id: str, enable_multimodal: bool, keep_t
         # 创建工作流实例
         workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal, task_logger=task_logger)
 
-        # 更新进度回调
-        def update_progress(step: str, progress: float):
-            task_logger.info(f"进度更新: {step} - {progress:.1%}")
-            task_manager.update_status(task_id, "processing", step, progress)
-
         # 执行处理
         result = workflow.process_video(
             video_path=str(video_path),
             output_dir=str(task_dir),
-            keep_temp=keep_temp,
-            progress_callback=update_progress
+            keep_temp=keep_temp
         )
 
         # 处理完成
         task_logger.info("任务处理完成！")
         task_logger.info(f"处理结果: {result}")
-        task_manager.update_status(task_id, "completed", "finished", 1.0)
+        task_manager.update_status(task_id, "completed")
 
     except Exception as e:
         # 处理失败

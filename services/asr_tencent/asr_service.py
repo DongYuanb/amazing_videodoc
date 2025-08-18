@@ -5,7 +5,7 @@ ASR 服务模块 - 封装腾讯云语音识别功能
 import json
 import os
 import asyncio
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 from . import credential
@@ -22,12 +22,6 @@ class ASRService:
                  engine_type: str = "16k_zh"):
         """
         初始化 ASR 服务
-        
-        Args:
-            appid: 腾讯云应用ID
-            secret_id: 腾讯云密钥ID
-            secret_key: 腾讯云密钥
-            engine_type: 识别引擎类型，默认为 "16k_zh"
         """
         if not appid:
             raise ValueError("APPID 不能为空")
@@ -61,17 +55,6 @@ class ASRService:
                         output_path: Optional[str] = None) -> str:
         """
         转录音频文件
-        
-        Args:
-            audio_path: 音频文件路径
-            output_path: 输出JSON文件路径，如果为None则自动生成
-            
-        Returns:
-            输出文件路径
-            
-        Raises:
-            FileNotFoundError: 音频文件不存在
-            RuntimeError: 识别失败
         """
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"音频文件不存在: {audio_path}")
@@ -118,88 +101,24 @@ class ASRService:
 
     async def transcribe_audio_async(self,
                                    audio_path: str,
-                                   output_path: Optional[str] = None,
-                                   progress_callback: Optional[Callable[[str, float], None]] = None) -> str:
+                                   output_path: Optional[str] = None) -> str:
         """
         异步转录音频文件
-
-        Args:
-            audio_path: 音频文件路径
-            output_path: 输出JSON文件路径，如果为None则自动生成
-            progress_callback: 进度回调函数，接收 (step, progress) 参数
-
-        Returns:
-            输出文件路径
-
-        Raises:
-            FileNotFoundError: 音频文件不存在
-            RuntimeError: 识别失败
         """
-        if progress_callback:
-            progress_callback("asr_start", 0.0)
-
         try:
             # 在线程池中执行同步方法
             loop = asyncio.get_event_loop()
-
-            if progress_callback:
-                progress_callback("asr_processing", 0.5)
-
             result = await loop.run_in_executor(
                 None,
                 self.transcribe_audio,
                 audio_path,
                 output_path
             )
-
-            if progress_callback:
-                progress_callback("asr_complete", 1.0)
-
             return result
-
-        except Exception as e:
-            if progress_callback:
-                progress_callback("asr_failed", 0.0)
+        except Exception:
             raise
 
-    def transcribe_audio_with_progress(self,
-                                     audio_path: str,
-                                     output_path: Optional[str] = None,
-                                     progress_callback: Optional[Callable[[str, float], None]] = None) -> str:
-        """
-        带进度回调的同步转录方法
 
-        Args:
-            audio_path: 音频文件路径
-            output_path: 输出JSON文件路径
-            progress_callback: 进度回调函数
-
-        Returns:
-            输出文件路径
-        """
-        print(f"🎤 ASR开始处理: {audio_path}")  # 添加调试信息
-        if progress_callback:
-            print("📞 调用进度回调: asr_start")  # 添加调试信息
-            progress_callback("asr_start", 0.0)
-
-        try:
-            if progress_callback:
-                print("📞 调用进度回调: asr_processing")  # 添加调试信息
-                progress_callback("asr_processing", 0.5)
-
-            result = self.transcribe_audio(audio_path, output_path)
-
-            if progress_callback:
-                print("📞 调用进度回调: asr_complete")  # 添加调试信息
-                progress_callback("asr_complete", 1.0)
-
-            return result
-
-        except Exception as e:
-            if progress_callback:
-                print("📞 调用进度回调: asr_failed")  # 添加调试信息
-                progress_callback("asr_failed", 0.0)
-            raise
 
     def get_detailed_status(self) -> Dict[str, Any]:
         """获取详细的服务状态信息"""
@@ -214,12 +133,6 @@ class ASRService:
     def _extract_sentences(self, resp: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         从响应中提取句子信息
-        
-        Args:
-            resp: ASR API 响应
-            
-        Returns:
-            句子列表，每个句子包含 text, start_time, end_time
         """
         sentences = []
         
@@ -251,11 +164,6 @@ def create_asr_service(appid: str = None,
                       engine_type: str = "16k_zh") -> ASRService:
     """
     创建 ASR 服务实例的工厂函数
-    
-    如果参数为空，会尝试从环境变量读取：
-    - TENCENT_APPID
-    - TENCENT_SECRET_ID  
-    - TENCENT_SECRET_KEY
     """
     if not appid:
         appid = os.getenv("TENCENT_APPID")

@@ -1,11 +1,11 @@
 """视频处理工作流服务"""
 import os
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 from services.text_merge import TextMerger
 from services.summary_generator import Summarizer
-from asr_tencent.asr_service import ASRService
+from .asr_tencent.asr_service import ASRService
 from ffmpeg_process import extract_audio_for_asr
 from multimodal_note_generator import MultimodalNoteGenerator
 
@@ -57,8 +57,7 @@ class VideoProcessingWorkflow:
             self.logger.error(f"图文笔记生成器初始化失败: {e}")
             return None
 
-    def process_video(self, video_path: str, output_dir: str, keep_temp: bool = False, 
-                     progress_callback=None) -> Dict[str, str]:
+    def process_video(self, video_path: str, output_dir: str, keep_temp: bool = False) -> Dict[str, str]:
         """处理视频的完整流程"""
         os.makedirs(output_dir, exist_ok=True)
 
@@ -75,43 +74,27 @@ class VideoProcessingWorkflow:
         try:
             # 1. 提取音频
             self.logger.info("1️⃣ 提取音频...")
-            if progress_callback:
-                progress_callback("audio_extract", 0.1)
             extract_audio_for_asr(video_path, audio_path)
 
             # 2. ASR转录
             self.logger.info("2️⃣ ASR转录...")
-            if progress_callback:
-                progress_callback("asr", 0.2)
-                self.asr_service.transcribe_audio_with_progress(audio_path, asr_json, progress_callback)
-            else:
-                self.asr_service.transcribe_audio(audio_path, asr_json)
+            self.asr_service.transcribe_audio(audio_path, asr_json)
 
             # 3. 文本合并
             self.logger.info("3️⃣ 文本合并...")
-            if progress_callback:
-                progress_callback("text_merge", 0.6)
-                success = self.text_merger.process_file_with_progress(asr_json, merged_json, progress_callback)
-            else:
-                success = self.text_merger.process_file(asr_json, merged_json)
+            success = self.text_merger.process_file(asr_json, merged_json)
             if not success:
                 raise RuntimeError("文本合并失败")
 
             # 4. 生成摘要
             self.logger.info("4️⃣ 生成摘要...")
-            if progress_callback:
-                progress_callback("summary", 0.8)
-                success = self.summary_generator.process_file_with_progress(merged_json, summary_json, progress_callback)
-            else:
-                success = self.summary_generator.process_file(merged_json, summary_json)
+            success = self.summary_generator.process_file(merged_json, summary_json)
             if not success:
                 raise RuntimeError("摘要生成失败")
 
             # 5. 生成图文笔记（可选）
             if self.enable_multimodal and self.multimodal_generator:
                 self.logger.info("5️⃣ 生成图文笔记...")
-                if progress_callback:
-                    progress_callback("multimodal", 0.9)
                 notes_dir = os.path.join(output_dir, "multimodal_notes")
                 multimodal_notes = self.multimodal_generator.generate_multimodal_notes(
                     video_path=video_path,
@@ -126,9 +109,6 @@ class VideoProcessingWorkflow:
                     self.logger.info("清理临时音频文件")
                 except:
                     pass
-
-            if progress_callback:
-                progress_callback("completed", 1.0)
 
             self.logger.info("✅ 处理完成！")
             return {

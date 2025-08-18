@@ -1,5 +1,4 @@
 import json,re,os,datetime,asyncio
-from typing import Optional, Callable
 from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
@@ -82,56 +81,19 @@ class TextMerger:
             return True
         return False
 
-    async def process_file_async(self, input_file: str, output_file: str,
-                               progress_callback: Optional[Callable[[str, float], None]] = None) -> bool:
+    async def process_file_async(self, input_file: str, output_file: str) -> bool:
         """异步处理文件"""
-        if progress_callback:
-            progress_callback("text_merge_start", 0.0)
-
         try:
             # 在线程池中执行同步方法
             loop = asyncio.get_event_loop()
-
-            if progress_callback:
-                progress_callback("text_merge_processing", 0.5)
-
             result = await loop.run_in_executor(
                 None,
                 self.process_file,
                 input_file,
                 output_file
             )
-
-            if progress_callback:
-                progress_callback("text_merge_complete", 1.0)
-
             return result
-
         except Exception as e:
-            if progress_callback:
-                progress_callback("text_merge_failed", 0.0)
-            raise RuntimeError(f"文本合并失败: {e}")
-
-    def process_file_with_progress(self, input_file: str, output_file: str,
-                                 progress_callback: Optional[Callable[[str, float], None]] = None) -> bool:
-        """带进度回调的同步处理方法"""
-        if progress_callback:
-            progress_callback("text_merge_start", 0.0)
-
-        try:
-            if progress_callback:
-                progress_callback("text_merge_processing", 0.5)
-
-            result = self.process_file(input_file, output_file)
-
-            if progress_callback:
-                progress_callback("text_merge_complete", 1.0)
-
-            return result
-
-        except Exception as e:
-            if progress_callback:
-                progress_callback("text_merge_failed", 0.0)
             raise RuntimeError(f"文本合并失败: {e}")
 
     def get_service_status(self) -> dict:
@@ -142,8 +104,3 @@ class TextMerger:
             "status": "ready"
         }
 
-if __name__=="__main__":
-    merger=TextMerger("openai/gpt-oss-20b:free")
-    if merger.process_file("result_sentences.json","merged_result.json"):
-        print("处理完成")
-    else:print("处理失败")
