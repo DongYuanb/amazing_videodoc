@@ -3,8 +3,8 @@ import os
 import logging
 from typing import Dict, Optional
 
-from asr_tencent.text_merge import TextMerger
-from asr_tencent.summary_generator import Summarizer
+from services.text_merge import TextMerger
+from services.summary_generator import Summarizer
 from asr_tencent.asr_service import ASRService
 from ffmpeg_process import extract_audio_for_asr
 from multimodal_note_generator import MultimodalNoteGenerator
