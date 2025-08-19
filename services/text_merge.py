@@ -6,7 +6,7 @@ load_dotenv()
 class TextMerger:
     """文本合并器：将语音识别的短句合并为完整段落"""
     def __init__(self,model_id:str):
-        self.client=OpenAI(base_url="https://openrouter.ai/api/v1",api_key=os.environ.get("OPENAI_API_KEY"))
+        self.client=OpenAI(base_url=os.environ.get("OPENAI_BASE_URL"),api_key=os.environ.get("OPENAI_API_KEY"))
         self.model_id=model_id
         if not os.environ.get("OPENAI_API_KEY"):raise ValueError("需要OPENAI_API_KEY环境变量")
         if not model_id:raise ValueError("需要model_id")

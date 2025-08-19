@@ -1,9 +1,12 @@
 """处理相关路由"""
 import json
+import os
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from models.api_models import ProcessRequest
 from services.task_manager import TaskManager
 from services.video_processor import VideoProcessingWorkflow
+from services.summary_generator import Summarizer
 from task_logger import TaskLogger
 
 router = APIRouter(prefix="/api", tags=["process"])
@@ -78,6 +81,40 @@ async def get_results(task_id: str):
         "status": metadata["status"],
         "results": results
     }
+
+
+@router.get("/stream-summary/{task_id}")
+async def stream_full_summary(task_id: str):
+    """流式生成视频全文摘要"""
+    try:
+        # 验证任务存在
+        metadata = task_manager.load_metadata(task_id)
+        task_dir = task_manager.get_task_dir(task_id)
+        asr_file = task_dir / "asr_result.json"
+
+        # 检查ASR文件是否存在
+        if not asr_file.exists():
+            raise HTTPException(status_code=404, detail="ASR转录文件不存在，请等待转录完成")
+
+        # 创建摘要生成器
+        model_id = os.getenv("MODEL_ID", "gpt-3.5-turbo")
+        summarizer = Summarizer(model_id)
+
+        # 返回流式响应
+        return StreamingResponse(
+            summarizer.generate_full_summary_stream(str(asr_file)),
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # 禁用nginx缓冲
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成摘要失败: {str(e)}")
 
 
 async def process_video_background(task_id: str, enable_multimodal: bool, keep_temp: bool):
