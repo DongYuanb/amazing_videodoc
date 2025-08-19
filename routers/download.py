@@ -185,7 +185,7 @@ async def download_and_process_video(task_id: str, url: str, platform: Platform,
         
         # 1. 下载视频
         task_logger.info(f"开始下载 {platform} 视频: {url}")
-        task_manager.update_status(task_id, "downloading", "downloading_video", 0.2)
+        task_manager.update_status(task_id, "downloading")
         
         download_result = downloader_service.download_video(
             url, platform, str(task_dir), quality

@@ -35,7 +35,7 @@ async def start_processing(task_id: str, request: ProcessRequest, background_tas
     )
 
     # 更新状态
-    task_manager.update_status(task_id, "processing", "starting")
+    task_manager.update_status(task_id, "processing")
 
     return {"message": "处理已开始", "task_id": task_id}
 
