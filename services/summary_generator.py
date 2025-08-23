@@ -81,20 +81,20 @@ class Summarizer:
             summary = "该时间段无有效内容"
         else:
             prompt = f"""
-请将以下视频内容整理为摘要：
+Please organize the following video content into a summary:
 
-### 内容处理要求
-1. **去冗余**：删除口语化表达（如“嗯”“对吧”“你知道”）、重复表述及无意义填充词
-2. **抓核心**：精准提炼2-3个关键信息点（如结论、决策、重要观点、数据等）
-3. **保完整**：确保保留所有必要信息，不遗漏任何实质性内容
+Content Processing Requirements
+	1.	Remove Redundancy: Eliminate spoken fillers (e.g., “um,” “right,” “you know”), repeated statements, and meaningless words
+	2.	Capture Core: Accurately extract 2–3 key points (e.g., conclusions, decisions, important viewpoints, data)
+	3.	Preserve Completeness: Ensure all necessary information is retained, without omitting any substantive content
 
-### 格式输出要求
-1. **结构框架**：采用“核心要点+具体说明”的层级结构，先用一句话总述该时间段核心内容，再分点展开关键信息
-2. **分点规范**：使用数字序号（1. 2. 3.）列举关键信息，每点不超过2句话，语言精炼
-3. **语言风格**：采用第三人称书面语，避免主观表述（如“我认为”“我们觉得”），用词严谨客观
-4. **排版美观**：段落清晰（总述单独成段，分点另起行），无多余空行或标点
+Output Format Requirements
+	1.	Structure: Use a “Core Point + Details” hierarchical format; provide a single sentence summarizing the main idea of the segment first, then elaborate key points
+	2.	Bullet Points: Number key points (1. 2. 3.), each point no longer than 2 sentences, concise language
+	3.	Style: Use third-person formal writing; avoid subjective expressions (e.g., “I think,” “we feel”); employ precise and objective wording
+	4.	Formatting: Clear paragraphs (summary sentence as a separate paragraph, numbered points in following lines), no extra blank lines or punctuation
 
-视频内容：
+Video Content:
 {content}
 """
             try:
@@ -196,17 +196,18 @@ class Summarizer:
             return
 
         prompt = f"""
-请为以下视频内容生成一个简洁的摘要：
+Please generate a concise summary for the following video content:
 
-### 摘要要求
-1. **核心内容**：提炼视频的主要观点和关键信息
-2. **结构清晰**：使用要点形式，便于快速阅读
-3. **语言精炼**：避免冗余，突出重点
+Summary Requirements
+	1.	Core Content: Extract the main points and key information from the video
+	2.	Clear Structure: Present in bullet points for easy reading
+	3.	Concise Language: Avoid redundancy and highlight the key points
 
-### 视频内容
+Video Content
+
 {full_text}
 
-请生成摘要：
+Please generate the summary:
 """
 
         try:
@@ -214,7 +215,7 @@ class Summarizer:
             response = self.client.chat.completions.create(
                 model=self.model_id,
                 messages=[
-                    {"role": "system", "content": "你是一个专业的内容摘要助手，擅长提炼视频内容的核心要点。"},
+                    {"role": "system", "content": "You are a professional content summarization assistant, skilled at extracting the core points from video content."},
                     {"role": "user", "content": prompt}
                 ],
                 stream=True,

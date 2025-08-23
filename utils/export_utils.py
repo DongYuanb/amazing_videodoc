@@ -1,9 +1,7 @@
 """导出功能工具函数"""
 import base64
 import re
-import markdown
 from pathlib import Path
-from datetime import datetime
 
 
 def embed_images_in_content(content: str, task_dir: Path) -> str:
@@ -37,29 +35,4 @@ def embed_images_in_content(content: str, task_dir: Path) -> str:
     return re.sub(pattern, replace_image, content)
 
 
-def create_html_document(content: str, task_id: str) -> str:
-    """创建完整的HTML文档"""
-    html_content = markdown.markdown(content, extensions=['tables', 'fenced_code'])
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>视频笔记 - {task_id}</title>
-        <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; margin: 40px; }}
-            h1, h2, h3 {{ color: #333; }}
-            img {{ max-width: 100%; height: auto; margin: 10px 0; }}
-            table {{ border-collapse: collapse; width: 100%; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #f2f2f2; }}
-            code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; }}
-            pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }}
-        </style>
-    </head>
-    <body>
-        {html_content}
-    </body>
-    </html>
-    """
+

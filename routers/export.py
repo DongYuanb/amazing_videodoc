@@ -3,20 +3,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from services.task_manager import TaskManager
 from utils.file_utils import find_notes_file, ensure_markdown_file, create_multimodal_generator
-from utils.export_utils import embed_images_in_content, create_html_document
-import re
-import base64
-from io import BytesIO
-from pathlib import Path
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from PIL import Image as PILImage
-import platform
+from markdown_pdf import MarkdownPdf, Section
 router = APIRouter(prefix="/api", tags=["export"])
 
 # 全局任务管理器实例
@@ -150,8 +137,8 @@ async def export_pdf(task_id: str):
     pdf_file = task_dir / f"video_notes_{task_id}.pdf"
     
     try:
-        # 使用 reportlab 生成简单的 PDF
-        generate_simple_pdf(markdown_content, str(pdf_file), task_dir)
+        # 使用 markdown-pdf 生成 PDF
+        generate_pdf_with_markdown_pdf(markdown_content, str(pdf_file), task_dir)
 
     except Exception as e:
         raise HTTPException(
@@ -174,168 +161,80 @@ async def export_pdf(task_id: str):
     )
 
 
-def setup_chinese_fonts():
-    """设置中文字体支持"""
-    try:
-        # 尝试注册系统中文字体
-        system = platform.system()
+def generate_pdf_with_markdown_pdf(markdown_content: str, pdf_path: str, task_dir) -> None:
+    """使用 markdown-pdf 生成 PDF"""
 
-        if system == "Darwin":  # macOS
-            font_paths = [
-                "/System/Library/Fonts/PingFang.ttc",
-                "/System/Library/Fonts/Helvetica.ttc",
-                "/Library/Fonts/Arial Unicode MS.ttf"
-            ]
-        elif system == "Windows":
-            font_paths = [
-                "C:/Windows/Fonts/msyh.ttc",  # 微软雅黑
-                "C:/Windows/Fonts/simsun.ttc",  # 宋体
-                "C:/Windows/Fonts/arial.ttf"
-            ]
-        else:  # Linux
-            font_paths = [
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-            ]
+    # 创建 PDF 对象，支持目录和优化
+    pdf = MarkdownPdf(toc_level=3, optimize=True)
 
-        # 尝试注册第一个可用的字体
-        for font_path in font_paths:
-            try:
-                if Path(font_path).exists():
-                    pdfmetrics.registerFont(TTFont('ChineseFont', font_path))
-                    return 'ChineseFont'
-            except:
-                continue
+    # 设置文档属性
+    pdf.meta["title"] = "📹 视频笔记"
+    pdf.meta["author"] = "Video Processing API"
+    pdf.meta["creator"] = "Amazing VideoDoc"
+    pdf.meta["subject"] = "AI生成的视频图文笔记"
 
-        # 如果都失败了，使用reportlab内置字体
-        return 'Helvetica'
+    # 自定义 CSS 样式，支持中文字体
+    custom_css = """
+    body {
+        font-family: 'PingFang SC', 'Microsoft YaHei', 'SimSun', 'DejaVu Sans', sans-serif;
+        line-height: 1.6;
+        color: #333;
+        font-size: 12px;
+    }
+    h1 {
+        color: #2c3e50;
+        font-size: 18px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    h2 {
+        color: #34495e;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    h3 {
+        color: #7f8c8d;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    img {
+        max-width: 100%;
+        height: auto;
+        margin: 10px 0;
+        display: block;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 10px 0;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    ul, ol {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+    li {
+        margin: 5px 0;
+    }
+    p {
+        margin: 8px 0;
+    }
+    """
 
-    except:
-        return 'Helvetica'
-
-
-def generate_simple_pdf(markdown_content: str, pdf_path: str, task_dir) -> None:
-    """使用 reportlab 生成支持中文的 PDF"""
-    # 设置中文字体
-    chinese_font = setup_chinese_fonts()
-
-    doc = SimpleDocTemplate(pdf_path, pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
-
-    # 创建支持中文的样式
-    title_style = ParagraphStyle(
-        'ChineseTitle',
-        parent=styles['Heading1'],
-        fontName=chinese_font,
-        fontSize=18,
-        spaceAfter=30,
-        alignment=TA_CENTER
+    # 添加内容段落，设置图片根目录
+    pdf.add_section(
+        Section(markdown_content, root=str(task_dir)),
+        user_css=custom_css
     )
 
-    h1_style = ParagraphStyle(
-        'ChineseH1',
-        parent=styles['Heading1'],
-        fontName=chinese_font,
-        fontSize=16,
-        spaceAfter=20
-    )
+    # 保存 PDF
+    pdf.save(pdf_path)
 
-    h2_style = ParagraphStyle(
-        'ChineseH2',
-        parent=styles['Heading2'],
-        fontName=chinese_font,
-        fontSize=14,
-        spaceAfter=15
-    )
-
-    h3_style = ParagraphStyle(
-        'ChineseH3',
-        parent=styles['Heading3'],
-        fontName=chinese_font,
-        fontSize=12,
-        spaceAfter=10
-    )
-
-    normal_style = ParagraphStyle(
-        'ChineseNormal',
-        parent=styles['Normal'],
-        fontName=chinese_font,
-        fontSize=10,
-        spaceAfter=8
-    )
-
-    # 添加标题
-    story.append(Paragraph("📹 视频笔记", title_style))
-    story.append(Spacer(1, 20))
-
-    # 处理markdown内容
-    lines = markdown_content.split('\n')
-    for line in lines:
-        line = line.strip()
-        if not line:
-            story.append(Spacer(1, 8))
-            continue
-
-        # 转义HTML特殊字符，但保留emoji
-        line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-
-        if line.startswith('# '):
-            # 一级标题
-            story.append(Paragraph(line[2:], h1_style))
-        elif line.startswith('## '):
-            # 二级标题
-            story.append(Paragraph(line[3:], h2_style))
-        elif line.startswith('### '):
-            # 三级标题
-            story.append(Paragraph(line[4:], h3_style))
-        elif line.startswith('!['):
-            # 图片处理
-            try:
-                match = re.search(r'!\[([^\]]*)\]\(([^)]+)\)', line)
-                if match:
-                    alt_text = match.group(1)
-                    img_path = match.group(2)
-
-                    if not img_path.startswith('http'):
-                        # 本地图片
-                        if img_path.startswith('/storage/'):
-                            img_path = img_path[9:]
-                        full_img_path = task_dir.parent.parent / img_path
-
-                        if full_img_path.exists():
-                            # 获取图片尺寸并调整
-                            with PILImage.open(full_img_path) as pil_img:
-                                width, height = pil_img.size
-                                # 限制最大宽度为4英寸
-                                max_width = 4 * inch
-                                if width > max_width:
-                                    ratio = max_width / width
-                                    width = max_width
-                                    height = height * ratio
-                                else:
-                                    width = width * 0.75  # 转换为点
-                                    height = height * 0.75
-
-                            img = RLImage(str(full_img_path), width=width, height=height)
-                            story.append(img)
-                            if alt_text:
-                                story.append(Paragraph(f"图片说明: {alt_text}", normal_style))
-                            story.append(Spacer(1, 12))
-                        else:
-                            story.append(Paragraph(f"[图片未找到: {alt_text}]", normal_style))
-            except Exception:
-                story.append(Paragraph(f"[图片处理失败: {line}]", normal_style))
-        elif line.startswith('- ') or line.startswith('* '):
-            # 列表项
-            story.append(Paragraph(f"• {line[2:]}", normal_style))
-        elif line.startswith('**') and line.endswith('**'):
-            # 粗体文本
-            content = line[2:-2]
-            story.append(Paragraph(f"<b>{content}</b>", normal_style))
-        else:
-            # 普通文本
-            if line:
-                story.append(Paragraph(line, normal_style))
-
-    doc.build(story)

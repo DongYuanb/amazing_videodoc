@@ -11,7 +11,7 @@ Pillow>=8.0.0             # 用于图片处理
 scipy>=1.7.0              # 用于高级数学计算（可选）
 
 # 图文混排笔记功能依赖
-reportlab>=3.6.0          # 用于PDF生成
+markdown-pdf>=0.1.0       # 用于Markdown转PDF生成
 markdown>=3.4.0           # 用于Markdown转HTML
 
 # 可选：用于更高级的视频处理

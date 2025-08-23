@@ -338,7 +338,7 @@ class MultimodalService:
         lines.extend(["## 📑 目录",""])
         for i,seg in enumerate(segs,1):
             start,end=seg.get("start_time",""),seg.get("end_time","")
-            lines.append(f"{i}. [{start} - {end}](#时间段-{i})")
+            lines.append(f"{i}. [{start} - {end}](#section-{i})")
         lines.extend(["","## 📝 详细内容",""])
 
         # 详细内容
@@ -347,7 +347,7 @@ class MultimodalService:
             dur,summary=seg.get("duration_seconds",0),seg.get("summary","")
             frames=seg.get("key_frames",[])
 
-            lines.extend([f"### 时间段 {i}","",f"**⏰ 时间**: {start} - {end} ({dur:.1f}秒)","",
+            lines.extend([f"### <a id='section-{i}'></a>时间段 {i}","",f"**⏰ 时间**: {start} - {end} ({dur:.1f}秒)","",
                          "**📋 摘要**:","",summary,""])
 
             if frames:
