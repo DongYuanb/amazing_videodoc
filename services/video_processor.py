@@ -8,14 +8,16 @@ from services.summary_generator import Summarizer
 from .asr_tencent.asr_service import ASRService
 from services.ffmpeg_process import extract_audio_for_asr
 from services.multimodal_note_generator import MultimodalNoteGenerator
-
+from utils.step_decorators import run_step
 
 class VideoProcessingWorkflow:
     """视频处理工作流程"""
 
-    def __init__(self, enable_multimodal: bool = True, task_logger: logging.Logger = None):
+    def __init__(self, enable_multimodal: bool = True, task_logger: logging.Logger = None, task_manager=None, task_id: str | None = None):
         self.enable_multimodal = enable_multimodal
         self.logger = task_logger or logging.getLogger(__name__)
+        self.task_manager = task_manager
+        self.task_id = task_id
         self._init_services()
 
     def _init_services(self):
@@ -73,34 +75,30 @@ class VideoProcessingWorkflow:
 
         try:
             # 1. 提取音频
-            self.logger.info("1️⃣ 提取音频...")
-            extract_audio_for_asr(video_path, audio_path)
+            run_step("extract_audio", extract_audio_for_asr, video_path, audio_path, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
 
             # 2. ASR转录
-            self.logger.info("2️⃣ ASR转录...")
-            self.asr_service.transcribe_audio(audio_path, asr_json)
+            run_step("asr", self.asr_service.transcribe_audio, audio_path, asr_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
 
             # 3. 文本合并
-            self.logger.info("3️⃣ 文本合并...")
-            success = self.text_merger.process_file(asr_json, merged_json)
+            success = run_step("merge_text", self.text_merger.process_file, asr_json, merged_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
             if not success:
                 raise RuntimeError("文本合并失败")
 
             # 4. 生成摘要
-            self.logger.info("4️⃣ 生成摘要...")
-            success = self.summary_generator.process_file(merged_json, summary_json)
+            success = run_step("summary", self.summary_generator.process_file, merged_json, summary_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
             if not success:
                 raise RuntimeError("摘要生成失败")
 
             # 5. 生成图文笔记（可选）
             if self.enable_multimodal and self.multimodal_generator:
-                self.logger.info("5️⃣ 生成图文笔记...")
                 notes_dir = os.path.join(output_dir, "multimodal_notes")
-                multimodal_notes = self.multimodal_generator.generate_multimodal_notes(
-                    video_path=video_path,
-                    summary_json_path=summary_json,
-                    output_dir=notes_dir
+                multimodal_notes = run_step("multimodal", self.multimodal_generator.generate_multimodal_notes,
+                    video_path=video_path, summary_json_path=summary_json, output_dir=notes_dir,
+                    task_manager=self.task_manager, task_id=self.task_id, logger=self.logger
                 )
+            else:
+                multimodal_notes = None
 
             # 清理临时文件
             if not keep_temp:
@@ -122,4 +120,6 @@ class VideoProcessingWorkflow:
 
         except Exception as e:
             self.logger.error(f"❌ 处理失败: {e}")
+            if self.task_manager and self.task_id:
+                self.task_manager.update_status(self.task_id, "failed", str(e))
             raise

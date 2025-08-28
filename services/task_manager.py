@@ -27,13 +27,15 @@ class TaskManager:
             "task_id": task_id,
             "original_filename": original_filename,
             "status": "pending",
+            "current_step": "pending",
+            "progress_percent": 0.0,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "error_message": None
         }
 
         self.save_metadata(task_id, metadata)
-        
+
         # 创建任务专用logger
         task_logger = create_task_logger(task_id, str(task_dir))
         task_logger.info(f"任务创建成功 - 原始文件名: {original_filename}")
@@ -64,6 +66,12 @@ class TaskManager:
         """更新任务状态"""
         metadata = self.load_metadata(task_id)
         metadata["status"] = status
+        # 状态与步骤的关系（完成/失败时更新步骤）
+        if status == "completed":
+            metadata["current_step"] = "completed"
+            metadata["progress_percent"] = 1.0
+        elif status == "failed":
+            metadata["current_step"] = "failed"
         metadata["updated_at"] = datetime.now().isoformat()
 
         if error_message is not None:
@@ -78,6 +86,42 @@ class TaskManager:
                 task_logger.error(f"任务状态更新: {status} - {error_message}")
             else:
                 task_logger.info(f"任务状态更新: {status}")
+
+    # ---- 进度相关辅助 ----
+    _STEP_ORDER = ["extract_audio","asr","merge_text","summary","multimodal"]
+    _STEP_WEIGHTS = {"extract_audio":0.10,"asr":0.20,"merge_text":0.2,"summary":0.2,"multimodal":0.30}
+
+    def _cumulative_weight(self, step: str) -> float:
+        total = 0.0
+        for s in self._STEP_ORDER:
+            total += self._STEP_WEIGHTS.get(s,0.0)
+            if s == step:
+                break
+        return min(total, 1.0)
+
+    def update_step(self, task_id: str, step: str):
+        """更新当前步骤到边界并写入累计进度"""
+        md = self.load_metadata(task_id)
+        md["current_step"] = step
+        md["progress_percent"] = self._cumulative_weight(step)
+        md["updated_at"] = datetime.now().isoformat()
+        self.save_metadata(task_id, md)
+
+    def update_progress(self, task_id: str, step: str, fraction: float | None = None):
+        """更新当前步骤与进度；fraction为当前步骤内的比例(0-1)"""
+        md = self.load_metadata(task_id)
+        md["current_step"] = step
+        if fraction is None:
+            md["progress_percent"] = self._cumulative_weight(step)
+        else:
+            prev = 0.0
+            for s in self._STEP_ORDER:
+                if s == step:
+                    break
+                prev += self._STEP_WEIGHTS.get(s,0.0)
+            md["progress_percent"] = max(0.0, min(1.0, prev + self._STEP_WEIGHTS.get(step,0.0)*max(0.0,min(1.0,fraction))))
+        md["updated_at"] = datetime.now().isoformat()
+        self.save_metadata(task_id, md)
 
     def validate_task_completed(self, task_id: str) -> dict:
         """验证任务是否完成并返回元数据"""

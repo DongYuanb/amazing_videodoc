@@ -147,7 +147,7 @@ async def process_video_background(task_id: str, enable_multimodal: bool, keep_t
         task_logger = TaskLogger.get_logger(task_id, str(task_dir))
 
         # 创建工作流实例
-        workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal, task_logger=task_logger)
+        workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal, task_logger=task_logger, task_manager=task_manager, task_id=task_id)
 
         # 执行处理
         result = await run_in_threadpool(

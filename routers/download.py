@@ -199,7 +199,7 @@ async def download_and_process_video(task_id: str, url: str, platform: Platform,
         task_manager.update_status(task_id, "processing")
 
         # 3. 启动视频处理工作流
-        workflow = VideoProcessingWorkflow(enable_multimodal=True, task_logger=task_logger)
+        workflow = VideoProcessingWorkflow(enable_multimodal=True, task_logger=task_logger, task_manager=task_manager, task_id=task_id)
 
         # 执行处理
         workflow.process_video(
