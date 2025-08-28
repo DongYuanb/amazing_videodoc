@@ -1,6 +1,5 @@
 """处理相关路由"""
 import json
-import os
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
@@ -10,6 +9,7 @@ from services.task_manager import TaskManager
 from services.video_processor import VideoProcessingWorkflow
 from services.summary_generator import Summarizer
 from utils.task_logger import TaskLogger
+from settings import get_settings
 
 router = APIRouter(prefix="/api", tags=["process"])
 
@@ -116,7 +116,7 @@ async def stream_full_summary(task_id: str):
             raise HTTPException(status_code=404, detail="ASR转录文件不存在，请等待转录完成")
 
         # 创建摘要生成器
-        model_id = os.getenv("MODEL_ID", "gpt-3.5-turbo")
+        model_id = get_settings().MODEL_ID
         summarizer = Summarizer(model_id)
 
         # 返回流式响应

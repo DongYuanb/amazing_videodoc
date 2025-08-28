@@ -6,7 +6,6 @@ import os
 import logging
 from pathlib import Path
 from typing import Dict, Optional
-from datetime import datetime
 
 
 class TaskLogger:
@@ -19,13 +18,6 @@ class TaskLogger:
     def get_logger(cls, task_id: str, task_dir: str = None) -> logging.Logger:
         """
         获取或创建任务专用的logger
-        
-        Args:
-            task_id: 任务ID
-            task_dir: 任务目录路径，如果为None则使用默认路径
-            
-        Returns:
-            任务专用的logger实例
         """
         if task_id in cls._loggers:
             return cls._loggers[task_id]
@@ -79,9 +71,6 @@ class TaskLogger:
     def close_logger(cls, task_id: str):
         """
         关闭并清理任务logger
-        
-        Args:
-            task_id: 任务ID
         """
         if task_id in cls._loggers:
             logger = cls._loggers[task_id]
@@ -158,16 +147,3 @@ def create_task_logger(task_id: str, task_dir: str = None) -> logging.Logger:
 def close_task_logger(task_id: str):
     """便捷函数：关闭任务logger"""
     TaskLogger.close_logger(task_id)
-
-
-# 使用示例
-if __name__ == "__main__":
-    # 创建测试logger
-    test_logger = create_task_logger("test_task_123")
-    
-    test_logger.info("这是一条信息日志")
-    test_logger.warning("这是一条警告日志")
-    test_logger.error("这是一条错误日志")
-    
-    # 关闭logger
-    close_task_logger("test_task_123")

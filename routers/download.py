@@ -1,8 +1,6 @@
 """在线视频下载相关路由"""
-import os
 import shutil
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
 
 from models.download_models import DownloadUrlRequest, DownloadStatus, Platform
 from services.task_manager import TaskManager

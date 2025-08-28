@@ -9,6 +9,7 @@ from .asr_tencent.asr_service import ASRService
 from services.ffmpeg_process import extract_audio_for_asr
 from services.multimodal_note_generator import MultimodalNoteGenerator
 from utils.step_decorators import run_step
+from settings import get_settings
 
 class VideoProcessingWorkflow:
     """视频处理工作流程"""
@@ -22,7 +23,8 @@ class VideoProcessingWorkflow:
 
     def _init_services(self):
         """初始化所有服务"""
-        model_id = os.getenv("MODEL_ID")
+        settings = get_settings()
+        model_id = settings.MODEL_ID
 
         # 核心服务
         self.text_merger = TextMerger(model_id)
@@ -35,28 +37,18 @@ class VideoProcessingWorkflow:
     def _create_asr_service(self):
         """创建ASR服务"""
         try:
-            return ASRService(
-                os.getenv("TENCENT_APPID"),
-                os.getenv("TENCENT_SECRET_ID"),
-                os.getenv("TENCENT_SECRET_KEY")
-            )
+            s = get_settings()
+            return ASRService(s.TENCENT_APPID, s.TENCENT_SECRET_ID, s.TENCENT_SECRET_KEY)
         except ValueError as e:
             raise RuntimeError(f"ASR服务初始化失败: {e}")
 
     def _create_multimodal_generator(self):
-        """创建图文笔记生成器"""
-        cohere_api_key = os.getenv("COHERE_API_KEY")
-        if not cohere_api_key:
-            self.logger.warning("未提供 Cohere API Key，跳过图文笔记生成")
-            return None
-
+        """创建图文笔记生成器（从集中配置读取，无需传参）"""
         try:
-            return MultimodalNoteGenerator(
-                cohere_api_key=cohere_api_key,
-                ffmpeg_path=os.getenv("FFMPEG_PATH", "ffmpeg")
-            )
+            return MultimodalNoteGenerator()
         except Exception as e:
-            self.logger.error(f"图文笔记生成器初始化失败: {e}")
+            # 例如缺少 COHERE_API_KEY 会在此抛出 ValueError
+            self.logger.warning(f"跳过图文笔记生成: {e}")
             return None
 
     def process_video(self, video_path: str, output_dir: str, keep_temp: bool = False) -> Dict[str, str]:
