@@ -6,8 +6,8 @@ from typing import Dict
 from services.text_merge import TextMerger
 from services.summary_generator import Summarizer
 from .asr_tencent.asr_service import ASRService
-from ffmpeg_process import extract_audio_for_asr
-from multimodal_note_generator import MultimodalNoteGenerator
+from services.ffmpeg_process import extract_audio_for_asr
+from services.multimodal_note_generator import MultimodalNoteGenerator
 
 
 class VideoProcessingWorkflow:

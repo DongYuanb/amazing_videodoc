@@ -33,16 +33,14 @@ class TextMerger:
 
         input_text="\n".join([f"[{i}]: {s['text']}" for i,s in enumerate(sentences)])
         prompt = f"""
-将输入的字幕句子按语义相关性合并成几个阶段，每个阶段的内容应主题一致、上下文紧密相关。
-注意：
-1. 保持原有顺序，不能打乱。
-2. 不要把所有句子合并成一个整体，阶段数量应为 2 个及以上。
-3. 如果两个句子主题差异较大，则应分到不同阶段。
-4. 输出 JSON 数组，每个元素包含：
-   - "text": 合并后的完整文本（句子之间用空格连接）
-   - "original_indices": 参与合并的原句索引列表（按原顺序）
-
-输入：
+Translate the input subtitle sentences into several phases based on semantic relevance. Each phase shall have consistent themes and closely connected contexts, with the following requirements:
+Maintain the original order without disruption.
+Do not merge all sentences into a single whole; the number of phases shall be 2 or more.
+If two sentences have significantly different themes, they shall be grouped into different phases.
+Output a JSON array, where each element contains:
+"text": The merged complete text (sentences connected by spaces)
+"original_indices": A list of original sentence indices involved in the merge (in the original order)
+Input:
 {input_text}
 """
 

@@ -4,7 +4,7 @@ from typing import List,Optional,Dict,Any,Tuple
 from datetime import datetime
 from pathlib import Path
 import cohere,numpy as np
-from ffmpeg_process import VideoProcessor
+from services.ffmpeg_process import VideoProcessor
 
 class MultimodalService:
     """多模态服务 - 统一处理帧提取、嵌入生成和去重"""

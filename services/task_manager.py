@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import HTTPException
 
-from task_logger import TaskLogger, create_task_logger
+from utils.task_logger import TaskLogger, create_task_logger
 
 
 class TaskManager:

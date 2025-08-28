@@ -17,34 +17,12 @@ class PlatformDetector:
             r'bilibili\.com/video/([a-zA-Z0-9]+)',
             r'b23\.tv/([a-zA-Z0-9]+)',
         ],
-        Platform.DOUYIN: [
-            r'douyin\.com/video/(\d+)',
-            r'v\.douyin\.com/([a-zA-Z0-9]+)',
-        ],
-        Platform.TIKTOK: [
-            r'tiktok\.com/@[^/]+/video/(\d+)',
-            r'vm\.tiktok\.com/([a-zA-Z0-9]+)',
-        ],
-        Platform.KUAISHOU: [
-            r'kuaishou\.com/short-video/(\d+)',
-            r'v\.kuaishou\.com/([a-zA-Z0-9]+)',
-        ],
-        Platform.XIAOHONGSHU: [
-            r'xiaohongshu\.com/explore/([a-zA-Z0-9]+)',
-            r'xhslink\.com/([a-zA-Z0-9]+)',
-        ]
     }
     
     @classmethod
     def detect_platform(cls, url: str) -> Optional[Platform]:
         """
         检测视频URL所属的平台
-        
-        Args:
-            url: 视频URL
-            
-        Returns:
-            检测到的平台，如果无法识别则返回None
         """
         url = url.lower().strip()
         
@@ -59,13 +37,6 @@ class PlatformDetector:
     def extract_video_id(cls, url: str, platform: Platform) -> Optional[str]:
         """
         提取视频ID
-        
-        Args:
-            url: 视频URL
-            platform: 平台类型
-            
-        Returns:
-            视频ID，如果无法提取则返回None
         """
         if platform not in cls.PLATFORM_PATTERNS:
             return None

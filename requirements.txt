@@ -10,12 +10,17 @@ pyarrow>=10.0.0           # LanceDB依赖
 cohere>=5.0.0             # 用于调用Cohere API
 numpy>=1.21.0             # 用于向量计算
 Pillow>=8.0.0             # 用于图片处理
-scipy>=1.7.0              # 用于高级数学计算（可选）
+scipy>=1.7.0              # 用于高级数学计算
 
 # 图文混排笔记功能依赖
 markdown-pdf>=0.1.0       # 用于Markdown转PDF生成
 markdown>=3.4.0           # 用于Markdown转HTML
 
-# 可选：用于更高级的视频处理
-# opencv-python>=4.5.0
-# moviepy>=1.0.0
+fastapi
+uvicorn[standard]
+python-multipart
+requests
+yt-dlp
+pydantic
+python-dotenv
+openai

@@ -13,10 +13,6 @@ class DownloadQuality(str, Enum):
 class Platform(str, Enum):
     YOUTUBE = "youtube"
     BILIBILI = "bilibili"
-    DOUYIN = "douyin"
-    TIKTOK = "tiktok"
-    KUAISHOU = "kuaishou"
-    XIAOHONGSHU = "xiaohongshu"
 
 
 class DownloadUrlRequest(BaseModel):

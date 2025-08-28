@@ -9,7 +9,7 @@ from services.task_manager import TaskManager
 from services.platform_detector import PlatformDetector
 from services.video_downloader import VideoDownloaderService
 from services.video_processor import VideoProcessingWorkflow
-from task_logger import TaskLogger
+from utils.task_logger import TaskLogger
 
 router = APIRouter(prefix="/api", tags=["download"])
 
