@@ -3,11 +3,13 @@ import json
 import os
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
+
 from models.api_models import ProcessRequest
 from services.task_manager import TaskManager
 from services.video_processor import VideoProcessingWorkflow
 from services.summary_generator import Summarizer
-from task_logger import TaskLogger
+from utils.task_logger import TaskLogger
 
 router = APIRouter(prefix="/api", tags=["process"])
 
@@ -83,12 +85,29 @@ async def get_results(task_id: str):
     }
 
 
+@router.get("/results/{task_id}/asr")
+async def get_asr_result(task_id: str):
+    """返回 ASR 转录数据"""
+    try:
+        task_manager.load_metadata(task_id)
+        task_dir = task_manager.get_task_dir(task_id)
+        asr_file = task_dir / "asr_result.json"
+        if not asr_file.exists():
+            raise HTTPException(status_code=404, detail="ASR 转录尚未生成")
+        with open(asr_file, "r", encoding="utf-8") as f:
+            return {"task_id": task_id, "data": json.load(f)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"读取 ASR 失败: {str(e)}")
+
+
 @router.get("/stream-summary/{task_id}")
 async def stream_full_summary(task_id: str):
     """流式生成视频全文摘要"""
     try:
         # 验证任务存在
-        metadata = task_manager.load_metadata(task_id)
+        task_manager.load_metadata(task_id)
         task_dir = task_manager.get_task_dir(task_id)
         asr_file = task_dir / "asr_result.json"
 
@@ -131,7 +150,8 @@ async def process_video_background(task_id: str, enable_multimodal: bool, keep_t
         workflow = VideoProcessingWorkflow(enable_multimodal=enable_multimodal, task_logger=task_logger)
 
         # 执行处理
-        result = workflow.process_video(
+        result = await run_in_threadpool(
+            workflow.process_video,
             video_path=str(video_path),
             output_dir=str(task_dir),
             keep_temp=keep_temp

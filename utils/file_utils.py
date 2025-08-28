@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 from typing import Optional
-from multimodal_note_generator import MultimodalNoteGenerator
+from services.multimodal_note_generator import MultimodalNoteGenerator
 
 def find_notes_file(task_dir: Path) -> Optional[Path]:
     """查找图文笔记文件，统一处理重复逻辑"""
@@ -40,7 +40,6 @@ def ensure_markdown_file(task_dir: Path, notes_file: Path) -> Path:
 
 def create_multimodal_generator():
     """创建图文笔记生成器的统一方法"""
-    from multimodal_note_generator import MultimodalNoteGenerator
     return MultimodalNoteGenerator(
         cohere_api_key=os.getenv("COHERE_API_KEY", "dummy")
     )
