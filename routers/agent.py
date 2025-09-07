@@ -73,5 +73,10 @@ async def reload_knowledge(task_id: str):
         logger.error(f"重新加载知识库失败: task_id={task_id}, error={str(e)}")
         raise HTTPException(status_code=500, detail=f"重新加载知识库失败: {str(e)}")
 
+from fastapi.responses import StreamingResponse
 
+@router.post("/stream")
+async def run_agent_stream(message: str = Form(...), task_id: str = Form(...), user_id: str = Form(default="user")):
+    gen = video_notes_agent_service.stream_agent(task_id, message, user_id)
+    return StreamingResponse(gen, media_type="text/event-stream", headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"})
 

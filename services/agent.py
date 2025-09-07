@@ -2,7 +2,6 @@
 import logging
 from pathlib import Path
 from typing import Dict, Optional
-
 import json
 from agno.agent import Agent
 from agno.knowledge.text import TextKnowledgeBase
@@ -162,6 +161,18 @@ class VideoNotesAgentService:
         except Exception as e:
             logger.error(f"Agent运行失败: task_id={task_id}, user_id={user_id}, error={str(e)}")
             raise
+
+    def stream_agent(self, task_id:str, message:str, user_id:str="user"):
+        try:
+            agent=self.get_or_create_agent(task_id,user_id)
+            logger.info(f"开始流式运行agent: task_id={task_id}, user_id={user_id}")
+            for delta in agent.run(message,stream=True):
+                c=getattr(delta,"content",None) if hasattr(delta,"content") else (delta.get("content") if isinstance(delta,dict) else str(delta))
+                if c: yield f"data: {json.dumps({'content':c},ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'done':True},ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.error(f"流式Agent运行失败: task_id={task_id}, user_id={user_id}, error={str(e)}")
+            yield f"data: {json.dumps({'error':str(e)},ensure_ascii=False)}\n\n"
 
     def clear_session(self, task_id: str, user_id: str = "user") -> bool:
         """清除指定的agent会话"""
