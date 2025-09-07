@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Centralized application settings using pydantic-settings."""
+"""Centralized application settings using pydantic-settings.
+- Supports deployment modes via .env: DEPLOYMENT_MODE=local|production
+- Computes API base URL and CORS based on env
+"""
 from __future__ import annotations
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +11,12 @@ from typing import Dict, List
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Deployment
+    DEPLOYMENT_MODE: str = Field(default="local")  # local | production
+    SERVER_HOST: str = Field(default="0.0.0.0")
+    SERVER_PORT: int = Field(default=8000)
+    API_BASE_URL: str | None = None  # override public URL, e.g. https://api.example.com
+    FRONTEND_URL: str | None = None  # for CORS in production
     # Core model & API providers
     MODEL_ID: str = Field(default="mistralai/ministral-8b")
     OPENAI_API_KEY: str | None = None
@@ -38,6 +47,14 @@ class Settings(BaseSettings):
     MULTIMODAL_EMBED_MODEL: str = "embed-v4.0"
     MULTIMODAL_BATCH_SIZE: int = 10
     MULTIMODAL_API_DELAY: float = 0.1
+
+    @property
+    def public_api_base_url(self) -> str:
+        if self.API_BASE_URL:
+            return self.API_BASE_URL.rstrip("/")
+        if self.DEPLOYMENT_MODE == "local":
+            return f"http://localhost:{self.SERVER_PORT}"
+        return "/"  # same-origin by default when served behind reverse proxy
 
 
 @lru_cache(maxsize=1)

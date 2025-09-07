@@ -9,11 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from settings import get_settings
 
 # 导入路由
 from routers import upload, process, export, download, agent
 
 load_dotenv()
+settings = get_settings()
 
 # 配置日志
 logging.basicConfig(
@@ -33,10 +35,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 配置 CORS
+# 配置 CORS (production respects FRONTEND_URL if provided)
+allow_origins = ["*"] if settings.DEPLOYMENT_MODE == "local" or not settings.FRONTEND_URL else [settings.FRONTEND_URL]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +51,11 @@ app.include_router(process.router)
 app.include_router(export.router)
 app.include_router(download.router)
 app.include_router(agent.router)
+
+# 基础配置查询（供前端读取运行时配置）
+@app.get("/api/config")
+async def api_config():
+    return {"mode": settings.DEPLOYMENT_MODE, "api_base_url": settings.public_api_base_url}
 
 # 挂载静态文件目录
 app.mount("/storage", StaticFiles(directory="storage"), name="storage")
@@ -83,8 +91,8 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
         reload=True,
         log_level="info"
     )
