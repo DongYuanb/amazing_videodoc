@@ -307,20 +307,23 @@ class MultimodalService:
             json.dump(final,f,ensure_ascii=False,indent=4)
         return out_file
 
-    def export_to_markdown(self,notes_json_path:str,output_path:str=None,image_base_path:str=None)->str:
-        """导出为Markdown格式"""
+    def export_to_markdown(self,notes_json_path:str,output_path:str=None,image_base_path:str=None,for_web:bool=True)->str:
+        """导出为Markdown格式
+        Args:
+            for_web: True=生成web访问路径(/storage/...)，False=生成相对路径(multimodal_notes/...)
+        """
         with open(notes_json_path,'r',encoding='utf-8') as f:
             data=json.load(f)
 
         if not output_path:output_path=f"{Path(notes_json_path).stem}.md"
         if not image_base_path:image_base_path=str(Path(notes_json_path).parent)
 
-        content=self._gen_markdown(data,output_path,image_base_path)
+        content=self._gen_markdown(data,output_path,image_base_path,for_web=for_web)
         with open(output_path,'w',encoding='utf-8') as f:
             f.write(content)
         return output_path
 
-    def _gen_markdown(self,data:Dict[str,Any],output_path:str=None,img_base:str=None)->str:
+    def _gen_markdown(self,data:Dict[str,Any],output_path:str=None,img_base:str=None,for_web:bool=True)->str:
         """生成Markdown内容"""
         info,segs,stats=data.get("video_info",{}),data.get("segments",[]),data.get("statistics",{})
         lines=[]
@@ -354,7 +357,13 @@ class MultimodalService:
                 lines.extend([f"**🖼️ 关键帧** ({len(frames)}张):",""])
                 for fp in frames:
                     name=Path(fp).name
-                    path=f"/{img_base}/multimodal_notes/{fp}" if img_base else f"multimodal_notes/{fp}"
+                    if for_web:
+                        # Web访问：需要绝对路径，从img_base提取task_id
+                        task_id = Path(img_base).name if img_base else "unknown"
+                        path=f"/storage/tasks/{task_id}/multimodal_notes/{fp}"
+                    else:
+                        # PDF导出：使用相对路径
+                        path=f"multimodal_notes/{fp}"
                     lines.append(f"![{name}]({path})")
                 lines.append("")
             else:

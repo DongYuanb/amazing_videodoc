@@ -38,9 +38,9 @@ class MultimodalNoteGenerator:
         return self.multimodal_service.generate_multimodal_notes(video_path, summary_json_path, output_dir)
 
     def export_to_markdown(self, notes_json_path: str, output_path: str = None,
-                          image_base_path: str = None) -> str:
+                          image_base_path: str = None, for_web: bool = True) -> str:
         """导出Markdown格式 - 委托给MultimodalService"""
-        return self.multimodal_service.export_to_markdown(notes_json_path, output_path, image_base_path)
+        return self.multimodal_service.export_to_markdown(notes_json_path, output_path, image_base_path, for_web)
 
 
 

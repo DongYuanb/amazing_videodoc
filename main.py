@@ -42,15 +42,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 挂载静态文件目录
-app.mount("/storage", StaticFiles(directory="storage"), name="storage")
-
-# 注册路由
+# 注册 API 路由（必须在静态文件挂载之前）
 app.include_router(upload.router)
 app.include_router(process.router)
 app.include_router(export.router)
 app.include_router(download.router)
 app.include_router(agent.router)
+
+# 挂载静态文件目录
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+
+# 挂载前端静态文件（SPA，必须最后挂载）
+frontend_dist = Path("zed-landing-vibe/dist")
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 
 
 @app.get("/")

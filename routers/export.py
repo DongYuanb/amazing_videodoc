@@ -30,12 +30,13 @@ async def export_markdown(task_id: str, force_regen: bool = False):
     if not notes_file:
         raise HTTPException(status_code=404, detail="图文笔记文件不存在")
 
-    # 生成 Markdown
+    # 生成 Markdown（Web版本，用于前端预览）
     generator = create_multimodal_generator()
     generator.export_to_markdown(
         notes_json_path=str(notes_file),
         output_path=str(markdown_file),
-        image_base_path=str(task_dir)
+        image_base_path=str(task_dir),
+        for_web=True
     )
 
     return FileResponse(
@@ -127,15 +128,45 @@ async def export_pdf(task_id: str):
             raise HTTPException(status_code=404, detail="图文笔记文件不存在")
         markdown_file = ensure_markdown_file(task_dir, notes_file)
 
-    # 读取 markdown 内容
-    with open(markdown_file, "r", encoding="utf-8") as f:
-        markdown_content = f.read()
+    # 优先使用用户编辑的 notes.md，保留用户的裁剪和编辑
+    if markdown_file.exists():
+        # 读取用户编辑的内容
+        with open(markdown_file, "r", encoding="utf-8") as f:
+            markdown_content = f.read()
 
-    # 不需要HTML处理，直接用markdown
+        # 将Web路径转换为PDF可用的相对路径
+        import re
+        # 转换绝对路径为相对路径
+        markdown_content = re.sub(
+            r'!\[([^\]]*)\]\(/storage/tasks/[^/]+/([^)]+)\)',
+            r'![\1](\2)',
+            markdown_content
+        )
+        temp_md_path = None  # 不需要临时文件
+    else:
+        # 如果用户没有编辑过，从JSON生成PDF专用内容
+        notes_file = find_notes_file(task_dir)
+        if not notes_file:
+            raise HTTPException(status_code=404, detail="图文笔记文件不存在")
+
+        generator = create_multimodal_generator()
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as temp_md:
+            generator.export_to_markdown(
+                notes_json_path=str(notes_file),
+                output_path=temp_md.name,
+                image_base_path=str(task_dir),
+                for_web=False  # 使用相对路径，适合PDF生成
+            )
+            temp_md_path = temp_md.name
+
+        # 读取生成的markdown内容
+        with open(temp_md_path, "r", encoding="utf-8") as f:
+            markdown_content = f.read()
 
     # 创建 PDF 文件路径
     pdf_file = task_dir / f"video_notes_{task_id}.pdf"
-    
+
     try:
         # 使用 markdown-pdf 生成 PDF
         generate_pdf_with_markdown_pdf(markdown_content, str(pdf_file), task_dir)
@@ -145,6 +176,14 @@ async def export_pdf(task_id: str):
             status_code=500,
             detail=f"PDF 生成失败: {str(e)}"
         )
+    finally:
+        # 清理临时文件（如果存在）
+        if temp_md_path:
+            import os
+            try:
+                os.unlink(temp_md_path)
+            except:
+                pass
 
     # 检查 PDF 文件是否成功创建
     if not pdf_file.exists():

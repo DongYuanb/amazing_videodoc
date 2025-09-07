@@ -196,18 +196,38 @@ Video Content:
             return
 
         prompt = f"""
-Please generate a concise summary for the following video content:
+你将把一段视频内容重写成"阅读版本"，按内容主题分成若干小节；目标是让读者通过阅读就能完整理解视频讲了什么，就好像是在读一篇 Blog 版的文章一样。
 
-Summary Requirements
-	1.	Core Content: Extract the main points and key information from the video
-	2.	Clear Structure: Present in bullet points for easy reading
-	3.	Concise Language: Avoid redundancy and highlight the key points
+输出要求：
 
-Video Content
+1. Metadata
+- Title
+- Author
+- URL
+
+2. Overview
+用一段话点明视频的核心论题与结论。
+
+3. 按照主题来梳理
+- 每个小节都需要根据视频中的内容详细展开，让我不需要再二次查看视频了解详情。
+- 若出现方法/框架/流程，将其重写为条理清晰的步骤或段落。
+- 若有关键数字、定义、原话，请如实保留核心词，并在括号内补充注释。
+
+4. 框架 & 心智模型（Framework & Mindset）
+可以从视频中抽象出什么 framework & mindset，将其重写为条理清晰的步骤或段落。
+
+风格与限制：
+- 永远不要高度浓缩！
+- 不新增事实；若出现含混表述，请保持原意并注明不确定性。
+- 专有名词保留原文，并在括号给出中文释义（若转录中出现或能直译）。
+- 要求类的问题不用体现出来。
+- 避免一个段落的内容过多，可以拆解成多个逻辑段落（使用 bullet points）。
+
+视频内容：
 
 {full_text}
 
-Please generate the summary:
+请开始生成摘要:
 """
 
         try:
