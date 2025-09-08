@@ -9,6 +9,7 @@ from agno.vectordb.lancedb import LanceDb
 from agno.vectordb.search import SearchType
 from agno.models.openai import OpenAIChat
 from agno.embedder.cohere import CohereEmbedder
+from agno.tools.mcp import MCPTools
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class VideoNotesAgentService:
                 name=f"VideoNotes-Agent-{task_id}",
                 agent_id=f"video_notes_agent_{task_id}",
                 user_id=user_id,
-                model=OpenAIChat(id="gpt-4o"),
+                model=OpenAIChat(id="gpt-5"),
                 knowledge=knowledge_base,
                 add_history_to_messages=True,
                 num_history_responses=5,
@@ -140,7 +141,7 @@ class VideoNotesAgentService:
                 show_tool_calls=True,
                 instructions=[
                     "你是一个专业的视频笔记助手。",
-                    "你可以基于用户的视频笔记内容回答相关问题。",
+                    "你可以基于用户的视频笔记内容回答相关问题。视频的文字内容已经提前放置在了数据库中",
                     "如果用户询问的内容在笔记中找不到，请诚实地告知。",
                     "回答时要准确、有条理，并尽可能引用知识库中具体知识。",
                     "使用中文回答，保持友好和专业的语调。"

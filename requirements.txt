@@ -24,3 +24,5 @@ yt-dlp
 pydantic
 python-dotenv
 openai
+
+faiss-cpu

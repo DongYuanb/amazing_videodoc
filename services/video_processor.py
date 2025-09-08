@@ -33,6 +33,10 @@ class VideoProcessingWorkflow:
 
         # 可选服务
         self.multimodal_generator = self._create_multimodal_generator() if self.enable_multimodal else None
+        if self.multimodal_generator and self.task_id:
+            # 将task_id传递，隔离缓存
+            try:self.multimodal_generator.__init__(task_id=self.task_id,logger=self.logger)
+            except Exception as e:self.logger.warning(f"无法为多模态服务设置task_id: {e}")
 
     def _create_asr_service(self):
         """创建ASR服务"""
@@ -45,11 +49,9 @@ class VideoProcessingWorkflow:
     def _create_multimodal_generator(self):
         """创建图文笔记生成器（从集中配置读取，无需传参）"""
         try:
-            return MultimodalNoteGenerator()
+            return MultimodalNoteGenerator(logger=self.logger,task_id=self.task_id)
         except Exception as e:
-            # 例如缺少 COHERE_API_KEY 会在此抛出 ValueError
-            self.logger.warning(f"跳过图文笔记生成: {e}")
-            return None
+            self.logger.warning(f"跳过图文笔记生成: {e}");return None
 
     def process_video(self, video_path: str, output_dir: str, keep_temp: bool = False) -> Dict[str, str]:
         """处理视频的完整流程"""

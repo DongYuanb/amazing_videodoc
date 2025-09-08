@@ -5,6 +5,9 @@ from datetime import datetime
 from pathlib import Path
 import cohere,numpy as np
 from services.ffmpeg_process import VideoProcessor
+from PIL import Image
+import faiss
+
 
 class MultimodalService:
     """多模态服务 - 统一处理帧提取、嵌入生成和去重"""
@@ -16,7 +19,7 @@ class MultimodalService:
     def __init__(self,cohere_api_key:str,ffmpeg_path:str="ffmpeg",similarity_threshold:float=0.9,
                  embedding_model:str=EMBED_MODEL,batch_size:int=BATCH_SIZE,frame_fps:float=0.2,
                  max_concurrent_segments:int=3,enable_text_alignment:bool=True,max_aligned_frames:int=3,
-                 logger:Optional[logging.Logger]=None):
+                 logger:Optional[logging.Logger]=None,task_id:Optional[str]=None):
         """初始化多模态服务"""
         self.api_key=cohere_api_key
         self.sim_thresh=similarity_threshold
@@ -30,6 +33,30 @@ class MultimodalService:
         self.video_proc=VideoProcessor(ffmpeg_path)
         self.logger=logger or logging.getLogger(__name__)
         self._lock=threading.Lock()
+        # 每个任务独立的嵌入缓存，避免跨用户污染
+        self.task_id=task_id or "default"
+        self._emb_cache:Dict[str,np.ndarray]={}
+
+    def _ahash(self,p:str,size:int=8)->int:
+        img=Image.open(p).convert('L').resize((size,size))
+        arr=np.array(img);m=arr.mean();bits=(arr>m).flatten();h=0
+        for b in bits:h=(h<<1)|(1 if b else 0)
+        return h
+
+    def _prefilter_by_hash(self,paths:List[str])->List[str]:
+        seen=set();out=[]
+        for p in paths:
+            try:
+                h=self._ahash(p)
+                if h in seen:continue
+                seen.add(h);out.append(p)
+            except Exception as e:
+                self.logger.warning(f"Hash fail {p}: {e}");out.append(p)
+        return out
+
+    def _choose_fps(self,dur:float,target:int=10,fp_min:float=0.1,fp_max:float=1.0)->float:
+        if dur<=0:return self.fps
+        return max(fp_min,min(fp_max,target/dur))
 
     def extract_frames(self,video_path:str,start_time:float,end_time:float,fps:float=1.0,output_dir:Optional[str]=None)->List[str]:
         """从视频指定时间范围抽取帧"""
@@ -49,38 +76,33 @@ class MultimodalService:
             return f"data:{self._get_mime_type(path)};base64,{data}"
 
     def generate_embeddings(self,paths:List[str],batch_size:Optional[int]=None,lock:Optional[object]=None)->Tuple[List[np.ndarray],List[str]]:
-        """批量获取图片embeddings"""
+        """批量获取图片embeddings（带缓存）"""
         bs=batch_size or self.batch_sz
         embeds,success=[],[]
-
+        # 预过滤：感知哈希去重，减少API调用
+        paths=self._prefilter_by_hash(paths)
         for i in range(0,len(paths),bs):
-            batch=paths[i:i+bs]
+            batch=paths[i:i+bs];data,valid,need=[],[],[]
             self.logger.info(f"Processing batch {i//bs+1}/{(len(paths)+bs-1)//bs}")
-
-            data,valid=[],[]
             for p in batch:
+                if p in self._emb_cache:
+                    embeds.append(self._emb_cache[p]);success.append(p);continue
                 try:
                     b64=self._to_base64(p)
-                    data.append({"content":[{"type":"image_url","image_url":{"url":b64}}]})
-                    valid.append(p)
+                    data.append({"content":[{"type":"image_url","image_url":{"url":b64}}]});valid.append(p)
+                    need.append(p)
                 except Exception as e:
                     self.logger.warning(f"Failed to process {p}: {e}")
-
             if not data:continue
-
             try:
                 if lock:
                     with lock:
-                        emb=self._call_api(data)
-                        time.sleep(self.API_DELAY)
+                        emb=self._call_api(data);time.sleep(self.API_DELAY)
                 else:
-                    emb=self._call_api(data)
-                    time.sleep(self.API_DELAY)
-                embeds.extend(emb)
-                success.extend(valid)
+                    emb=self._call_api(data);time.sleep(self.API_DELAY)
+                for p,e in zip(need,emb):self._emb_cache[p]=e;embeds.append(e);success.append(p)
             except Exception as e:
                 self.logger.warning(f"API call failed: {e}")
-
         return embeds,success
 
     def _call_api(self,data:List[Dict[str,Any]])->List[np.ndarray]:
@@ -98,22 +120,31 @@ class MultimodalService:
         return 0.0 if n1==0 or n2==0 else float(np.dot(e1,e2)/(n1*n2))
 
     def remove_duplicates(self,paths:List[str],embeds:List[np.ndarray])->List[str]:
-        """基于embeddings相似度去除重复图片"""
+        """基于embeddings相似度去重（向量化/FAISS）"""
         if len(paths)!=len(embeds):raise ValueError("paths and embeddings length mismatch")
-
-        unique_idx,processed=[],[]
-        for i,curr in enumerate(embeds):
-            is_dup=False
-            for proc in processed:
-                if self.calc_similarity(curr,proc)>self.sim_thresh:
-                    is_dup=True
-                    self.logger.debug(f"Duplicate: {paths[i]}")
-                    break
-            if not is_dup:
-                unique_idx.append(i)
-                processed.append(curr)
-
-        result=[paths[i] for i in unique_idx]
+        if not paths:return []
+        # 归一化
+        E=np.array([e/np.linalg.norm(e) if np.linalg.norm(e)>0 else e for e in embeds],dtype=np.float32)
+        if faiss is None:
+            keep_idx=[];R=None
+            for i,v in enumerate(E):
+                if R is not None:
+                    sims=R@v
+                    if float(sims.max())>self.sim_thresh:continue
+                keep_idx.append(i)
+                R=v[None,:] if R is None else np.vstack([R,v])
+            result=[paths[i] for i in keep_idx]
+            self.logger.info(f"Removed {len(paths)-len(result)} duplicates, kept {len(result)}")
+            return result
+        # 使用FAISS内积索引
+        d=E.shape[1];index=faiss.IndexFlatIP(d);kept=[];added=False
+        for i,v in enumerate(E):
+            if added:
+                D,_=index.search(v.reshape(1,-1).astype(np.float32),1)
+                if float(D[0,0])>self.sim_thresh:continue
+            kept.append(i)
+            index.add(v.reshape(1,-1));added=True
+        result=[paths[i] for i in kept]
         self.logger.info(f"Removed {len(paths)-len(result)} duplicates, kept {len(result)}")
         return result
 
@@ -144,23 +175,27 @@ class MultimodalService:
         try:
             self.logger.info("1. Extracting frames...")
             frames=self.extract_frames(video_path,start_time,end_time,fps,temp_dir)
+            # 预过滤，减少后续embedding调用
+            frames=self._prefilter_by_hash(frames)
 
             self.logger.info("2. Getting embeddings...")
             embeds,success=self.generate_embeddings(frames,lock=lock)
             if len(embeds)!=len(frames):
-                self.logger.warning(f"Got {len(embeds)} embeddings for {len(frames)} frames")
-                frames=success
+                self.logger.warning(f"Got {len(embeds)} embeddings for {len(frames)} frames");frames=success
 
             self.logger.info("3. Removing duplicates...")
             unique=self.remove_duplicates(frames,embeds)
 
             self.logger.info("4. Saving unique frames...")
             saved=self.save_unique_frames(unique,output_dir)
+            # 将embedding按保存后的路径对齐，避免路径变更导致无法复用
+            ftomap={p:e for p,e in zip(frames,embeds)}
+            embed_map={saved[i]:ftomap.get(unique[i]) for i in range(len(saved))}
 
             result={"video_path":video_path,"time_range":(start_time,end_time),"fps":fps,
                    "total_frames":len(frames),"unique_frames":len(saved),
                    "duplicates_removed":len(frames)-len(saved),"similarity_threshold":self.sim_thresh,
-                   "output_dir":output_dir,"saved_paths":saved}
+                   "output_dir":output_dir,"saved_paths":saved,"embeddings":embed_map}
 
             self.logger.info("✅ Process completed!")
             return result
@@ -192,14 +227,14 @@ class MultimodalService:
         os.makedirs(seg_dir,exist_ok=True)
 
         try:
-            # 1. 先提取和去重帧
-            result=self.process_video_frames(video_path,start_sec,end_sec,seg_dir,
-                                           self.fps,keep_temp=False,lock=self._lock)
-            frame_paths=result.get("saved_paths",[])
+            # 1. 先提取和去重帧（自适应FPS，目标<=10帧）
+            dur=end_sec-start_sec;seg_fps=self._choose_fps(dur,target=10)
+            result=self.process_video_frames(video_path,start_sec,end_sec,seg_dir,seg_fps,keep_temp=False,lock=self._lock)
+            frame_paths=result.get("saved_paths",[]);embed_map=result.get("embeddings",{})
 
-            # 2. 如果启用对齐且有文本摘要，进行图文对齐
+            # 2. 如果启用对齐且有文本摘要，进行图文对齐（复用embedding）
             if enable_alignment and self.enable_text_alignment and text_summary.strip() and frame_paths:
-                aligned_paths=self.align_frames_with_text(frame_paths,text_summary)
+                aligned_paths=self.align_frames_with_text(frame_paths,text_summary,embeds=embed_map)
                 # 重新保存对齐后的帧到新目录
                 aligned_dir=os.path.join(seg_dir,"aligned")
                 final_paths=self.save_unique_frames(aligned_paths,aligned_dir,copy_files=True)
@@ -227,40 +262,32 @@ class MultimodalService:
                 "duration_seconds":self._parse_time(end)-self._parse_time(start),
                 "summary":summary,"key_frames":rel_paths,"frame_count":len(rel_paths)}
 
-    def align_frames_with_text(self,frame_paths:List[str],text_summary:str,max_frames:int=None)->List[str]:
-        """使用Cohere跨模态嵌入对齐图文"""
+    def align_frames_with_text(self,frame_paths:List[str],text_summary:str,max_frames:int=None,embeds:Optional[Dict[str,np.ndarray]]=None)->List[str]:
+        """使用Cohere跨模态嵌入对齐图文（复用缓存）"""
         if max_frames is None:max_frames=self.max_aligned_frames
-        if not frame_paths or not text_summary.strip():
-            return frame_paths[:max_frames]
-
+        if not frame_paths or not text_summary.strip():return frame_paths[:max_frames]
         try:
-            # 1. 获取文本嵌入
             text_input={"content":[{"type":"text","text":text_summary}]}
-            text_resp=self.client.embed(model=self.embed_model,input_type="search_query",
-                                       embedding_types=["float"],inputs=[text_input])
-            text_embed=np.array(text_resp.embeddings.float_[0])
-
-            # 2. 获取图像嵌入
-            img_embeds,valid_paths=self.generate_embeddings(frame_paths)
-            if not img_embeds:
-                return frame_paths[:max_frames]
-
-            # 3. 计算跨模态相似度
-            similarities=[]
-            for img_embed in img_embeds:
-                sim=self.calc_similarity(text_embed,img_embed)
-                similarities.append(sim)
-
-            # 4. 按相似度排序，选择最匹配的帧
-            sorted_indices=sorted(range(len(similarities)),key=lambda i:similarities[i],reverse=True)
-            aligned_paths=[valid_paths[i] for i in sorted_indices[:max_frames]]
-
-            self.logger.info(f"文本对齐: {len(frame_paths)}帧 -> {len(aligned_paths)}帧, 最高相似度: {max(similarities):.3f}")
-            return aligned_paths
-
+            text_resp=self.client.embed(model=self.embed_model,input_type="search_query",embedding_types=["float"],inputs=[text_input])
+            t=np.array(text_resp.embeddings.float_[0])
+            # 准备图像嵌入，优先从参数/缓存获取
+            img_vecs=[];valid_paths=[];missing=[]
+            for p in frame_paths:
+                v=embeds.get(p) if (embeds is not None and p in embeds) else None
+                if v is None:v=self._emb_cache.get(p)
+                if v is None:missing.append(p)
+                else:img_vecs.append(v);valid_paths.append(p)
+            if missing:
+                new_vecs,_=self.generate_embeddings(missing)
+                for p,v in zip(missing,new_vecs):self._emb_cache[p]=v;img_vecs.append(v);valid_paths.append(p)
+            if not img_vecs:return frame_paths[:max_frames]
+            sims=[self.calc_similarity(t,v) for v in img_vecs]
+            idx=sorted(range(len(sims)),key=lambda i:sims[i],reverse=True)
+            aligned=[valid_paths[i] for i in idx[:max_frames]]
+            self.logger.info(f"文本对齐: {len(frame_paths)}帧 -> {len(aligned)}帧, 最高相似度: {max(sims):.3f}")
+            return aligned
         except Exception as e:
-            self.logger.warning(f"图文对齐失败: {e}, 使用原始帧")
-            return frame_paths[:max_frames]
+            self.logger.warning(f"图文对齐失败: {e}, 使用原始帧");return frame_paths[:max_frames]
 
     def generate_multimodal_notes(self,video_path:str,summary_json_path:str,output_dir:str)->str:
         """生成图文混排笔记（并发处理）"""

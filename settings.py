@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Deployment
     DEPLOYMENT_MODE: str = Field(default="local")  # local | production
     SERVER_HOST: str = Field(default="0.0.0.0")
-    SERVER_PORT: int = Field(default=8000)
+    SERVER_PORT: int = Field(default=8001)
     API_BASE_URL: str | None = None  # override public URL, e.g. https://api.example.com
     FRONTEND_URL: str | None = None  # for CORS in production
     # Core model & API providers
@@ -41,11 +41,11 @@ class Settings(BaseSettings):
     # Multimodal defaults
     MULTIMODAL_FRAME_FPS: float = 0.2
     MULTIMODAL_SIMILARITY_THRESHOLD: float = 0.9
-    MULTIMODAL_MAX_CONCURRENT_SEGMENTS: int = 3
+    MULTIMODAL_MAX_CONCURRENT_SEGMENTS: int = 5
     MULTIMODAL_ENABLE_TEXT_ALIGNMENT: bool = True
     MULTIMODAL_MAX_ALIGNED_FRAMES: int = 3
     MULTIMODAL_EMBED_MODEL: str = "embed-v4.0"
-    MULTIMODAL_BATCH_SIZE: int = 10
+    MULTIMODAL_BATCH_SIZE: int = 24
     MULTIMODAL_API_DELAY: float = 0.1
 
     @property

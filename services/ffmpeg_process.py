@@ -80,15 +80,7 @@ class VideoProcessor:
         duration = end_time - start_time
         output_pattern = os.path.join(output_dir, "frame_%06d.jpg")
 
-        cmd = [
-            self.ffmpeg,
-            "-i", video_path,
-            "-ss", str(start_time),
-            "-t", str(duration),
-            "-vf", f"fps={fps}",
-            "-y",  # 覆盖输出文件
-            output_pattern
-        ]
+        cmd=[self.ffmpeg,"-ss",str(start_time),"-i",video_path,"-t",str(duration),"-vf",f"fps={fps},scale=-1:360","-q:v","5","-y",output_pattern]
 
         try:
             subprocess.run(cmd, capture_output=True, check=True, text=True)
