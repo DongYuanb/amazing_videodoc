@@ -105,35 +105,79 @@ async def get_asr_result(task_id: str):
 @router.get("/stream-summary/{task_id}")
 async def stream_full_summary(task_id: str):
     """流式生成视频全文摘要"""
+    async def safe_stream():
+        try:
+            # 验证任务存在
+            task_manager.load_metadata(task_id)
+            task_dir = task_manager.get_task_dir(task_id)
+            asr_file = task_dir / "asr_result.json"
+
+            # 检查ASR文件是否存在
+            if not asr_file.exists():
+                yield "ASR转录文件不存在，请等待转录完成\n"
+                return
+
+            # 创建摘要生成器
+            model_id = get_settings().MODEL_ID
+            summarizer = Summarizer(model_id)
+
+            # 流式生成摘要
+            async for chunk in summarizer.generate_full_summary_stream(str(asr_file)):
+                yield chunk
+
+        except Exception as e:
+            yield f"\n\n生成摘要时发生错误: {str(e)}\n"
+
     try:
-        # 验证任务存在
-        task_manager.load_metadata(task_id)
-        task_dir = task_manager.get_task_dir(task_id)
-        asr_file = task_dir / "asr_result.json"
-
-        # 检查ASR文件是否存在
-        if not asr_file.exists():
-            raise HTTPException(status_code=404, detail="ASR转录文件不存在，请等待转录完成")
-
-        # 创建摘要生成器
-        model_id = get_settings().MODEL_ID
-        summarizer = Summarizer(model_id)
-
-        # 返回流式响应
         return StreamingResponse(
-            summarizer.generate_full_summary_stream(str(asr_file)),
+            safe_stream(),
             media_type="text/plain; charset=utf-8",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"  # 禁用nginx缓冲
+                "X-Accel-Buffering": "no"
             }
         )
-
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"生成摘要失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"初始化流式摘要失败: {str(e)}")
+
+
+@router.get("/status/stream/{task_id}")
+async def stream_status(task_id: str):
+    """流式状态更新"""
+    import asyncio
+    async def gen():
+        last=None;count=0
+        try:
+            while count<300:  # 最多5分钟
+                try:
+                    md=task_manager.load_metadata(task_id)
+                    js=json.dumps(md,ensure_ascii=False)
+                    if js!=last:
+                        yield f"data: {js}\n\n"
+                        last=js
+                    if md.get("status") in ["completed","failed"]:
+                        yield f"data: {js}\n\n"  # 确保最终状态被发送
+                        break
+                    await asyncio.sleep(1)
+                    count+=1
+                except Exception as e:
+                    yield f"data: {json.dumps({'error':str(e)})}\n\n"
+                    break
+        except Exception:
+            pass
+        finally:
+            yield f"data: {json.dumps({'done':True})}\n\n"
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":"no-cache",
+            "Connection":"keep-alive",
+            "X-Accel-Buffering":"no"
+        }
+    )
 
 
 async def process_video_background(task_id: str, enable_multimodal: bool, keep_temp: bool):

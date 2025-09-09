@@ -38,6 +38,9 @@ class Settings(BaseSettings):
         "summary":0.20,
         "multimodal":0.30,
     })
+    # ASR progress estimate (X=processing speed vs audio duration)
+    ASR_PROGRESS_SPEED_X: float = 6.0
+    ASR_PROGRESS_MIN_SECS: float = 8.0
     # Multimodal defaults
     MULTIMODAL_FRAME_FPS: float = 0.2
     MULTIMODAL_SIMILARITY_THRESHOLD: float = 0.9

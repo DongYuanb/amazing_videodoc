@@ -72,7 +72,7 @@ class VideoProcessingWorkflow:
             run_step("extract_audio", extract_audio_for_asr, video_path, audio_path, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
 
             # 2. ASR转录
-            run_step("asr", self.asr_service.transcribe_audio, audio_path, asr_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
+            run_step("asr", self._asr_with_progress, audio_path, asr_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
 
             # 3. 文本合并
             success = run_step("merge_text", self.text_merger.process_file, asr_json, merged_json, task_manager=self.task_manager, task_id=self.task_id, logger=self.logger)
@@ -87,8 +87,8 @@ class VideoProcessingWorkflow:
             # 5. 生成图文笔记（可选）
             if self.enable_multimodal and self.multimodal_generator:
                 notes_dir = os.path.join(output_dir, "multimodal_notes")
-                multimodal_notes = run_step("multimodal", self.multimodal_generator.generate_multimodal_notes,
-                    video_path=video_path, summary_json_path=summary_json, output_dir=notes_dir,
+                multimodal_notes = run_step("multimodal", self._multimodal_with_progress,
+                    video_path, summary_json, notes_dir,
                     task_manager=self.task_manager, task_id=self.task_id, logger=self.logger
                 )
             else:
@@ -117,3 +117,21 @@ class VideoProcessingWorkflow:
             if self.task_manager and self.task_id:
                 self.task_manager.update_status(self.task_id, "failed", str(e))
             raise
+
+    def _asr_with_progress(self,audio,asr_out):
+        import wave,threading,time;from settings import get_settings
+        s=get_settings();tm=self.task_manager;tid=self.task_id;step="asr"
+        try:
+            with wave.open(audio,"rb") as w:dur=w.getnframes()/w.getframerate()
+        except:dur=60
+        est=max(s.ASR_PROGRESS_MIN_SECS,dur/s.ASR_PROGRESS_SPEED_X);t0=time.time();done=False
+        def tick():
+            while not done:
+                f=min(0.99,(time.time()-t0)/est);tm.update_progress(tid,step,f);time.sleep(1)
+        th=threading.Thread(target=tick,daemon=True);th.start()
+        try:return self.asr_service.transcribe_audio(audio,asr_out)
+        finally:done=True;th.join(timeout=0.1)
+
+    def _multimodal_with_progress(self,video_path,summary_json,notes_dir):
+        progress=lambda f:self.task_manager.update_progress(self.task_id,"multimodal",f)
+        return self.multimodal_generator.generate_multimodal_notes(video_path,summary_json,notes_dir,progress_cb=progress)

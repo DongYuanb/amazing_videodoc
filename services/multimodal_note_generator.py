@@ -27,9 +27,9 @@ class MultimodalNoteGenerator:
         except Exception as e:
             self.logger.error(f"MultimodalService 初始化失败: {e}");raise
 
-    def generate_multimodal_notes(self, video_path: str, summary_json_path: str, output_dir: str) -> str:
+    def generate_multimodal_notes(self, video_path: str, summary_json_path: str, output_dir: str, progress_cb=None) -> str:
         """生成图文混排笔记 - 委托给MultimodalService"""
-        return self.multimodal_service.generate_multimodal_notes(video_path, summary_json_path, output_dir)
+        return self.multimodal_service.generate_multimodal_notes(video_path, summary_json_path, output_dir, progress_cb)
 
     def export_to_markdown(self, notes_json_path: str, output_path: str = None,
                           image_base_path: str = None, for_web: bool = True) -> str:

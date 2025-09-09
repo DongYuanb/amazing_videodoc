@@ -289,7 +289,7 @@ class MultimodalService:
         except Exception as e:
             self.logger.warning(f"图文对齐失败: {e}, 使用原始帧");return frame_paths[:max_frames]
 
-    def generate_multimodal_notes(self,video_path:str,summary_json_path:str,output_dir:str)->str:
+    def generate_multimodal_notes(self,video_path:str,summary_json_path:str,output_dir:str,progress_cb=None)->str:
         """生成图文混排笔记（并发处理）"""
         with open(summary_json_path,'r',encoding='utf-8') as f:
             data=json.load(f)
@@ -302,14 +302,14 @@ class MultimodalService:
         os.makedirs(frames_dir,exist_ok=True)
 
         tasks=[(i,seg,video_path,frames_dir,output_dir) for i,seg in enumerate(summaries)]
-        notes=[]
+        notes=[];total=len(summaries);done=0
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_idx={executor.submit(self._process_segment,task):task[0] for task in tasks}
             results={}
 
             for future in concurrent.futures.as_completed(future_to_idx):
-                idx=future_to_idx[future]
+                idx=future_to_idx[future];done+=1
                 try:
                     results[idx]=future.result()
                 except Exception as e:
@@ -318,6 +318,7 @@ class MultimodalService:
                     results[idx]={"segment_id":idx+1,"start_time":seg.get("start_time",""),
                                  "end_time":seg.get("end_time",""),"duration_seconds":0,
                                  "summary":seg.get("summary",""),"key_frames":[],"frame_count":0}
+                if progress_cb:progress_cb(done/total)
 
             for i in range(len(summaries)):
                 if i in results:notes.append(results[i])
