@@ -47,12 +47,9 @@ async def download_from_url(request: DownloadUrlRequest, background_tasks: Backg
             detail=f"平台 {platform} 暂未支持，目前支持: YouTube, Bilibili"
         )
     
-    # 3. 获取视频基本信息
-    try:
-        video_info = downloader_service.get_video_info(request.url, platform)
-        video_title = video_info.get("title", "Unknown Video")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"无法获取视频信息: {str(e)}")
+    # 3. 获取视频基本信息改为后台获取，接口快速返回
+    video_info = None
+    video_title = "Unknown Video"
     
     # 4. 创建任务
     task_id = task_manager.create_task(f"{platform}_{video_title}")
@@ -75,7 +72,7 @@ async def download_from_url(request: DownloadUrlRequest, background_tasks: Backg
         "platform": platform.value,
         "title": video_title,
         "message": "视频下载已开始",
-        "estimated_duration": video_info.get("duration", 0)
+        "estimated_duration": 0
     }
 
 
@@ -174,12 +171,19 @@ async def download_and_process_video(task_id: str, url: str, platform: Platform,
         
         # 更新任务元数据
         metadata = task_manager.load_metadata(task_id)
-        metadata.update({
-            "platform": platform.value,
-            "title": video_info.get("title", "Unknown"),
-            "url": url
-        })
+        info_title = (video_info or {}).get("title", "Unknown")
+        metadata.update({"platform": platform.value, "title": info_title, "url": url})
         task_manager.save_metadata(task_id, metadata)
+        if not video_info:
+            try:
+                video_info = downloader_service.get_video_info(url, platform)
+                # 更新元数据中的标题（若拿到了）
+                metadata = task_manager.load_metadata(task_id)
+                metadata.update({"title": video_info.get("title", "Unknown")})
+                task_manager.save_metadata(task_id, metadata)
+            except Exception as e:
+                task_logger.info(f"获取视频信息失败，继续处理: {e}")
+                video_info = {}
         
         # 1. 下载视频
         task_logger.info(f"开始下载 {platform} 视频: {url}")

@@ -39,6 +39,8 @@ class YouTubeDownloader(BaseDownloader):
             'noplaylist': True,
             'quiet': True,
             'merge_output_format': 'mp4',
+            'socket_timeout': 15,
+            'retries': 2,
         }
         
         try:
@@ -72,6 +74,8 @@ class YouTubeDownloader(BaseDownloader):
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'socket_timeout': 10,
+            'retries': 2,
         }
         
         try:
@@ -103,6 +107,8 @@ class BilibiliDownloader(BaseDownloader):
             'noplaylist': True,
             'quiet': True,
             'merge_output_format': 'mp4',
+            'socket_timeout': 15,
+            'retries': 2,
         }
                 
         try:
@@ -136,6 +142,8 @@ class BilibiliDownloader(BaseDownloader):
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'socket_timeout': 10,
+            'retries': 2,
         }
         
         try:
