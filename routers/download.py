@@ -1,6 +1,7 @@
 """在线视频下载相关路由"""
 import shutil
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from starlette.concurrency import run_in_threadpool
 
 from models.download_models import DownloadUrlRequest, DownloadStatus, Platform
 from services.task_manager import TaskManager
@@ -185,26 +186,27 @@ async def download_and_process_video(task_id: str, url: str, platform: Platform,
                 task_logger.info(f"获取视频信息失败，继续处理: {e}")
                 video_info = {}
         
-        # 1. 下载视频
+        # 1. 下载视频（放到线程池，避免阻塞事件循环）
         task_logger.info(f"开始下载 {platform} 视频: {url}")
         task_manager.update_status(task_id, "downloading")
-        
-        download_result = downloader_service.download_video(
+
+        download_result = await run_in_threadpool(
+            downloader_service.download_video,
             url, platform, str(task_dir), quality
         )
-        
+
         # 2. 重命名为标准格式
         original_video_path = task_dir / "original_video.mp4"
         shutil.move(download_result.file_path, original_video_path)
-        
+
         task_logger.info(f"视频下载完成: {download_result.title}")
         task_manager.update_status(task_id, "processing")
 
-        # 3. 启动视频处理工作流
+        # 3. 启动视频处理工作流（线程池执行）
         workflow = VideoProcessingWorkflow(enable_multimodal=True, task_logger=task_logger, task_manager=task_manager, task_id=task_id)
 
-        # 执行处理
-        workflow.process_video(
+        await run_in_threadpool(
+            workflow.process_video,
             video_path=str(original_video_path),
             output_dir=str(task_dir),
             keep_temp=False
