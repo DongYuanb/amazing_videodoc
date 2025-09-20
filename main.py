@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 """
-视频处理工作流程编排器 - FastAPI 服务
+视频处理工作流程编排器 - FastAPI 服务 (优化版)
 """
 import logging
 from pathlib import Path
 from datetime import datetime
+import os  # 新增导入，用于环境变量访问和路径操作
+
+# 第三方库
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
+from dotenv import load_dotenv
+
+# 本地模块
+from settings import get_settings
+from routers import upload, process, export, download, agent
 
 # 自定义静态文件类，添加缓存头
 class CustomStaticFiles(StaticFiles):
@@ -17,11 +26,6 @@ class CustomStaticFiles(StaticFiles):
         if response.status_code == 200 and not path.endswith(".html"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
-from dotenv import load_dotenv
-from settings import get_settings
-
-# 导入路由
-from routers import upload, process, export, download, agent
 
 load_dotenv()
 settings = get_settings()
@@ -44,24 +48,30 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 # 启用 GZip 压缩（必须在 CORS 之前添加）
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# 配置 CORS (production respects FRONTEND_URL if provided)
-allow_origins = ["*"] if settings.DEPLOYMENT_MODE == "local" or not settings.FRONTEND_URL else [settings.FRONTEND_URL]
+# 配置 CORS (生产环境建议指定具体源)
+# 根据环境变量或设置动态配置允许的源，优先使用配置的 FRONTEND_URL，否则在本地模式下允许所有源
+if settings.DEPLOYMENT_MODE == "local":
+    allow_origins = ["*"]  # 本地开发允许所有源
+else:
+    # 生产环境：如果配置了 FRONTEND_URL，则使用它；否则默认为空列表（更安全）
+    allow_origins = [settings.FRONTEND_URL] if settings.FRONTEND_URL else []
+    # 你也可以添加其他可信的源，例如：
+    # allow_origins = [settings.FRONTEND_URL, "https://another-trusted-domain.com"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_credentials=True,  # 如果前端需要携带认证信息（如cookies），请设置为True
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # 动态生成 sitemap.xml
-from fastapi.responses import Response
 @app.get("/sitemap.xml", response_class=Response)
 async def sitemap():
-    # 可根据实际路由动态生成
     urls = [
         "/", "/api/health", "/api/config", "/api/upload", "/api/process", "/api/export", "/api/download", "/api/agent"
     ]
@@ -69,11 +79,12 @@ async def sitemap():
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     ]
+    # 确保 settings 中有 public_api_base_url 属性，并在 settings.py 中设置默认值
+    base_url = settings.public_api_base_url.rstrip("/") if hasattr(settings, 'public_api_base_url') and settings.public_api_base_url else "http://localhost:8000"
     for url in urls:
-        xml.append(f'<url><loc>{{base_url}}{url}</loc></url>')
+        xml.append(f'<url><loc>{base_url}{url}</loc></url>')
     xml.append('</urlset>')
-    base_url = settings.public_api_base_url.rstrip("/") if hasattr(settings, "public_api_base_url") else "http://localhost:8000"
-    xml_str = '\n'.join([line.replace("{base_url}", base_url) for line in xml])
+    xml_str = '\n'.join(xml)
     return Response(content=xml_str, media_type="application/xml")
 
 # 注册 API 路由（必须在静态文件挂载之前）
@@ -95,17 +106,17 @@ app.mount("/storage", CustomStaticFiles(directory="storage"), name="storage")
 frontend_dist = Path("zed-landing-vibe/dist")
 if frontend_dist.exists():
     app.mount("/", CustomStaticFiles(directory=str(frontend_dist), html=True), name="frontend")
-
+    logger.info("前端静态文件已挂载。")
+else:
+    logger.warning(f"前端静态文件目录不存在: {frontend_dist.absolute()}。前端页面将无法访问。")
 
 @app.get("/")
 async def root():
     return {"message": "视频处理 API 服务", "docs": "/docs"}
 
-
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
 
 if __name__ == "__main__":
     import uvicorn
@@ -120,10 +131,13 @@ if __name__ == "__main__":
     logger.info("🔍 健康检查: http://localhost:8000/api/health")
     logger.info("📤 上传接口: http://localhost:8000/api/upload")
 
+    # 根据部署模式决定是否启用重载
+    reload_enabled = settings.DEPLOYMENT_MODE == "local"
+
     uvicorn.run(
         "main:app",
         host=settings.SERVER_HOST,
         port=settings.SERVER_PORT,
-        reload=True,
+        reload=reload_enabled,  # 仅在本地开发模式启用热重载
         log_level="info"
     )
